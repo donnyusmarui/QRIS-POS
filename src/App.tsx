@@ -7,6 +7,8 @@ import { RoleGuard } from "@/components/layout/RoleGuard"
 import { LoginPage } from "@/features/auth/LoginPage"
 import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { ProductsPage } from "@/features/products/ProductsPage"
+import { PosPage } from "@/features/transactions/PosPage"
+import { TransactionsHistoryPage } from "@/features/transactions/TransactionsHistoryPage"
 
 function AppRoutes() {
   return (
@@ -39,14 +41,26 @@ function AppRoutes() {
         }
       />
 
-      {/* Placeholder routes for future phases */}
       <Route
         path="/pos"
         element={
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="transactions:create">
-                <PlaceholderPage title="Transaksi POS" />
+                <PosPage />
+              </RoleGuard>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/transactions"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <RoleGuard permission="transactions:create">
+                <TransactionsHistoryPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
