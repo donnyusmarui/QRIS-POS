@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { apiFetch } from "@/lib/api"
-import type { AiProvider, AiSettings } from "@/types"
+import type { AiProvider } from "@/types"
 import {
   Bot,
   Key,
@@ -16,7 +16,23 @@ import {
   Globe,
   Save,
   HelpCircle,
+  Pencil,
+  Trash2,
+  Plus,
+  Power,
 } from "lucide-react"
+
+interface SavedModel {
+  id: string
+  provider: AiProvider
+  modelName: string
+  maskedApiKey: string
+  hasKey: boolean
+  baseUrl: string
+  temperature: number
+  systemPromptOverride: string
+  isActive: boolean
+}
 
 interface ProviderOption {
   id: AiProvider
@@ -129,32 +145,106 @@ export function AiSettingsPage() {
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>("")
   const [saveErrorMsg, setSaveErrorMsg] = useState<string>("")
 
-  // Fetch current setting
+  // Daftar model tersimpan + mode form (null = tambah baru, id = edit)
+  const [models, setModels] = useState<SavedModel[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const fillForm = (m: SavedModel) => {
+    setProvider(m.provider)
+    setModelName(m.modelName)
+    setApiKey("")
+    setMaskedApiKey(m.maskedApiKey)
+    setHasKey(m.hasKey)
+    setBaseUrl(m.baseUrl)
+    setTemperature(m.temperature)
+    setSystemPromptOverride(m.systemPromptOverride)
+    setTestResult(null)
+    setSaveErrorMsg("")
+  }
+
+  const resetForm = () => {
+    setEditingId(null)
+    setProvider("gemini")
+    setModelName("gemini-2.0-flash")
+    setApiKey("")
+    setMaskedApiKey("")
+    setHasKey(false)
+    setBaseUrl("")
+    setTemperature(0.4)
+    setSystemPromptOverride("")
+    setTestResult(null)
+    setSaveErrorMsg("")
+  }
+
+  const loadModels = async (): Promise<SavedModel[]> => {
+    const res = await apiFetch<SavedModel[]>("ai-settings-list")
+    const list = res.data || []
+    setModels(list)
+    return list
+  }
+
+  // Muat daftar model; form langsung berisi model yang sedang aktif
   useEffect(() => {
-    async function loadSettings() {
+    async function init() {
       setIsLoading(true)
       try {
-        const res = await apiFetch<AiSettings & { maskedApiKey?: string; hasKey?: boolean }>(
-          "ai-settings-get"
-        )
-        if (res.data) {
-          const s = res.data
-          setProvider(s.provider || "gemini")
-          setModelName(s.modelName || "gemini-2.0-flash")
-          setMaskedApiKey(s.maskedApiKey || "")
-          setHasKey(Boolean(s.hasKey))
-          setBaseUrl(s.baseUrl || "")
-          setTemperature(Number(s.temperature) || 0.4)
-          setSystemPromptOverride(s.systemPromptOverride || "")
+        const list = await loadModels()
+        const active = list.find((m) => m.isActive) || list[0]
+        if (active) {
+          setEditingId(active.id)
+          fillForm(active)
         }
       } catch (err) {
         console.error("Gagal memuat pengaturan AI:", err)
+        setSaveErrorMsg(err instanceof Error ? err.message : "Gagal memuat pengaturan AI")
       } finally {
         setIsLoading(false)
       }
     }
-    loadSettings()
+    init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const handleActivate = async (id: string) => {
+    setBusyId(id)
+    setSaveErrorMsg("")
+    try {
+      await apiFetch("ai-settings-activate", { method: "POST", body: JSON.stringify({ id }) })
+      await loadModels()
+      setSaveSuccessMsg("Model aktif berhasil diganti.")
+      setTimeout(() => setSaveSuccessMsg(""), 3000)
+    } catch (err: any) {
+      setSaveErrorMsg(err?.message || "Gagal mengaktifkan model.")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleDelete = async (m: SavedModel) => {
+    if (!window.confirm(`Hapus model ${m.modelName}? Tindakan ini tidak dapat dibatalkan.`)) return
+    setBusyId(m.id)
+    setSaveErrorMsg("")
+    try {
+      await apiFetch(`ai-settings-delete?id=${encodeURIComponent(m.id)}`, { method: "DELETE" })
+      const list = await loadModels()
+      if (editingId === m.id) {
+        const next = list.find((x) => x.isActive) || list[0]
+        if (next) {
+          setEditingId(next.id)
+          fillForm(next)
+        } else {
+          resetForm()
+        }
+      }
+      setSaveSuccessMsg("Model berhasil dihapus.")
+      setTimeout(() => setSaveSuccessMsg(""), 3000)
+    } catch (err: any) {
+      setSaveErrorMsg(err?.message || "Gagal menghapus model.")
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   // Handle provider switch
   const handleProviderSelect = (prov: ProviderOption) => {
@@ -188,6 +278,7 @@ export function AiSettingsPage() {
       }>("ai-settings-test", {
         method: "POST",
         body: JSON.stringify({
+          ...(editingId ? { id: editingId } : {}),
           provider,
           modelName,
           apiKey: apiKey || (hasKey ? maskedApiKey : ""),
@@ -213,18 +304,20 @@ export function AiSettingsPage() {
     }
   }
 
-  // Handle Save
+  // Handle Save (tambah baru bila editingId null, edit bila terisi)
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
     setSaveSuccessMsg("")
     setSaveErrorMsg("")
     try {
-      const res = await apiFetch("ai-settings-save", {
+      const isNew = editingId === null
+      const res = await apiFetch<{ id: string }>("ai-settings-save", {
         method: "POST",
         body: JSON.stringify({
+          ...(editingId ? { id: editingId } : {}),
           provider,
-          modelName,
+          modelName: modelName.trim(),
           apiKey: apiKey.trim(),
           baseUrl: baseUrl.trim(),
           temperature,
@@ -233,16 +326,14 @@ export function AiSettingsPage() {
       })
 
       if (res.success) {
-        setSaveSuccessMsg("Konfigurasi Multi-Model AI berhasil disimpan dan aktif!")
-        if (apiKey.trim()) {
-          setHasKey(true)
-          setMaskedApiKey(
-            apiKey.length > 8
-              ? `${apiKey.slice(0, 4)}••••••••${apiKey.slice(-4)}`
-              : "••••••••"
-          )
-          setApiKey("")
+        const list = await loadModels()
+        const savedId = res.data?.id || editingId
+        const saved = list.find((m) => m.id === savedId)
+        if (saved) {
+          setEditingId(saved.id)
+          fillForm(saved)
         }
+        setSaveSuccessMsg(isNew ? "Model baru berhasil ditambahkan!" : "Perubahan model berhasil disimpan!")
         setTimeout(() => setSaveSuccessMsg(""), 4000)
       } else {
         setSaveErrorMsg(res.error || "Gagal menyimpan konfigurasi.")
@@ -275,10 +366,16 @@ export function AiSettingsPage() {
         </div>
 
         {/* Active Badge */}
-        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 px-3.5 py-2 text-xs font-semibold text-emerald-800 shrink-0">
-          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Model Aktif: {selectedProviderConfig.name} ({modelName})</span>
-        </div>
+        {(() => {
+          const active = models.find((m) => m.isActive)
+          const name = PROVIDERS.find((p) => p.id === active?.provider)?.name
+          return (
+            <div className="flex items-center gap-2 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 px-3.5 py-2 text-xs font-semibold text-emerald-800 shrink-0">
+              <span className={`flex h-2.5 w-2.5 rounded-full ${active ? "bg-emerald-500 animate-pulse" : "bg-stone-300"}`} />
+              <span>{active ? `Model Aktif: ${name || active.provider} (${active.modelName})` : "Belum ada model aktif"}</span>
+            </div>
+          )
+        })()}
       </div>
 
       {isLoading ? (
@@ -287,6 +384,110 @@ export function AiSettingsPage() {
         </div>
       ) : (
         <form onSubmit={handleSave} className="space-y-6">
+          {/* ── DAFTAR MODEL TERSIMPAN ── */}
+          <div className="rounded-3xl border border-[#EFECE6] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-emerald-700" />
+                  Model Tersimpan ({models.length})
+                </h2>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Hanya satu model yang aktif melayani chatbot. Edit, hapus, atau tambah model kapan saja.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetForm}
+                className="press-tactile min-h-[44px] inline-flex items-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Tambah Model</span>
+              </button>
+            </div>
+
+            {models.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4 text-xs text-stone-500">
+                Belum ada model tersimpan. Isi form di bawah lalu klik Simpan untuk menambahkan model pertama.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {models.map((m) => {
+                  const isEditing = editingId === m.id
+                  const busy = busyId === m.id
+                  return (
+                    <li
+                      key={m.id}
+                      className={`flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border p-3.5 transition ${
+                        isEditing ? "border-emerald-600 bg-emerald-50/40" : "border-stone-200 bg-stone-50/50"
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold text-stone-900 truncate">
+                            {PROVIDERS.find((p) => p.id === m.provider)?.name || m.provider}
+                          </span>
+                          {m.isActive && (
+                            <span className="rounded-md bg-emerald-700 px-2 py-0.5 text-[10px] font-semibold text-white">Aktif</span>
+                          )}
+                          {isEditing && (
+                            <span className="rounded-md bg-stone-200 px-2 py-0.5 text-[10px] font-semibold text-stone-700">Sedang diedit</span>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-stone-600 truncate mt-0.5">{m.modelName}</p>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          Key: {m.hasKey ? m.maskedApiKey : "belum diisi"}
+                          {m.baseUrl ? ` • ${m.baseUrl}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!m.isActive && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => handleActivate(m.id)}
+                            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 transition"
+                            title="Jadikan model aktif"
+                          >
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
+                            <span className="hidden sm:inline">Aktifkan</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingId(m.id)
+                            fillForm(m)
+                            window.scrollTo({ top: 0, behavior: "smooth" })
+                          }}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition"
+                          title="Edit model"
+                        >
+                          <Pencil className="h-4 w-4" />
+                          <span className="hidden sm:inline">Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleDelete(m)}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 transition"
+                          title="Hapus model"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Hapus</span>
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            <p className="text-[11px] font-semibold text-emerald-800">
+              {editingId ? "Mode: mengedit model terpilih — ubah form di bawah lalu Simpan." : "Mode: menambah model baru — isi form di bawah lalu Simpan."}
+            </p>
+          </div>
+
           {/* ── STEP 1: PILIH PROVIDER AI ── */}
           <div className="rounded-3xl border border-[#EFECE6] bg-white p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
@@ -549,7 +750,7 @@ export function AiSettingsPage() {
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    <span>Simpan Konfigurasi</span>
+                    <span>{editingId ? "Simpan Perubahan" : "Tambah Model"}</span>
                   </>
                 )}
               </button>

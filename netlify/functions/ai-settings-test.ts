@@ -30,13 +30,13 @@ export default async (req: Request, context: Context) => {
     modelName = modelName || 'gemini-2.0-flash';
     apiKey = (apiKey || '').trim();
 
-    // If key is masked or empty, load from database
+    // If key is masked or empty, load from database (by id bila ada, jika tidak model aktif)
     if (!apiKey || apiKey.includes('••••')) {
       const db = createDb();
       const rows = await db
         .select()
         .from(aiSettings)
-        .where(eq(aiSettings.isActive, true))
+        .where(body.id ? eq(aiSettings.id, body.id) : eq(aiSettings.isActive, true))
         .limit(1);
       if (rows.length > 0 && rows[0].apiKey) {
         apiKey = rows[0].apiKey;

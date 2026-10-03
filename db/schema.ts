@@ -288,6 +288,49 @@ export const sqliteAiSettings = sqliteTable("ai_settings", {
     .default(sql`(datetime('now'))`),
 })
 
+// ─── Chat (Human-in-the-Loop) ────────────────────────────
+// status: ai | waiting_admin | admin | closed
+// stage:  greeting | gathering | consent_asked | recommended
+export const pgChatSessions = pgTable("chat_sessions", {
+  id: pgText("id").primaryKey(),
+  status: pgText("status").notNull().default("ai"),
+  stage: pgText("stage").notNull().default("greeting"),
+  handoffReason: pgText("handoff_reason"),
+  createdAt: pgText("created_at").notNull(),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
+export const pgChatMessages = pgTable("chat_messages", {
+  id: pgText("id").primaryKey(),
+  sessionId: pgText("session_id")
+    .notNull()
+    .references(() => pgChatSessions.id, { onDelete: "cascade" }),
+  sender: pgText("sender").notNull(), // customer | bot | admin
+  content: pgText("content").notNull(),
+  productsJson: pgText("products_json"),
+  createdAt: pgText("created_at").notNull(),
+})
+
+export const sqliteChatSessions = sqliteTable("chat_sessions", {
+  id: sqText("id").primaryKey(),
+  status: sqText("status").notNull().default("ai"),
+  stage: sqText("stage").notNull().default("greeting"),
+  handoffReason: sqText("handoff_reason"),
+  createdAt: sqText("created_at").notNull(),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
+export const sqliteChatMessages = sqliteTable("chat_messages", {
+  id: sqText("id").primaryKey(),
+  sessionId: sqText("session_id")
+    .notNull()
+    .references(() => sqliteChatSessions.id, { onDelete: "cascade" }),
+  sender: sqText("sender").notNull(),
+  content: sqText("content").notNull(),
+  productsJson: sqText("products_json"),
+  createdAt: sqText("created_at").notNull(),
+})
+
 // ─── Active Dual-Engine Exports ──────────────────────────
 export const roles: any = isPg ? pgRoles : sqliteRoles
 export const users: any = isPg ? pgUsers : sqliteUsers
@@ -298,6 +341,8 @@ export const transactions: any = isPg ? pgTransactions : sqliteTransactions
 export const transactionItems: any = isPg ? pgTransactionItems : sqliteTransactionItems
 export const inventoryLog: any = isPg ? pgInventoryLog : sqliteInventoryLog
 export const aiSettings: any = isPg ? pgAiSettings : sqliteAiSettings
+export const chatSessions: any = isPg ? pgChatSessions : sqliteChatSessions
+export const chatMessages: any = isPg ? pgChatMessages : sqliteChatMessages
 
 // ─── Type exports ────────────────────────────────────────
 export type Role = typeof pgRoles.$inferSelect

@@ -14,6 +14,7 @@ import { InventoryPage } from "@/features/inventory/InventoryPage"
 import { CustomersPage } from "@/features/customers/CustomersPage"
 import { ReportsPage } from "@/features/reports/ReportsPage"
 import { AiSettingsPage } from "@/features/settings/AiSettingsPage"
+import { ChatInboxPage } from "@/features/settings/ChatInboxPage"
 
 import { CustomerPortalPage } from "@/features/customer/CustomerPortalPage"
 
@@ -168,6 +169,19 @@ function AppRoutes() {
             <AppLayout>
               <RoleGuard permission="settings:manage">
                 <AiSettingsPage />
+              </RoleGuard>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/settings/chat"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <RoleGuard permission="customers:manage">
+                <ChatInboxPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
