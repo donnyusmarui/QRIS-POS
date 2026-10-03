@@ -4,6 +4,7 @@ import { useCustomerCartStore, type CartItem } from "@/stores/customer-cart-stor
 import { CustomerCartDrawer } from "./CustomerCartDrawer"
 import { CustomerPaymentModal } from "./CustomerPaymentModal"
 import { CustomerReceiptModal } from "./CustomerReceiptModal"
+import { CustomerChatbotWidget } from "./CustomerChatbotWidget"
 import type { Product } from "@/types"
 import {
   QrCode,
@@ -697,6 +698,9 @@ export function CustomerPortalPage() {
           setActiveQrisRefId(null)
         }}
       />
+
+      {/* ── FLOATING RAG HERBAL CONSULTANT CHATBOT ── */}
+      <CustomerChatbotWidget formatRupiah={formatRupiah} />
     </div>
   )
 }
