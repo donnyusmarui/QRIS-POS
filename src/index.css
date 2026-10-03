@@ -28,72 +28,85 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Jeruk AI Brand System Tokens */
+  --color-citrus: #FF5A2B;
+  --color-citrus-hover: #E5481B;
+  --color-citrus-subtle: #FFF2ED;
+  --color-sunlight: #FFE972;
+  --color-sunlight-light: #FFFADB;
+  --color-cream: #FBF9F5;
+  --color-espresso: #1C1917;
+  --color-espresso-card: #27221E;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 16px);
 }
 
 @layer base {
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.141 0.005 285.823);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.141 0.005 285.823);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.141 0.005 285.823);
-    --primary: oklch(0.21 0.006 285.885);
-    --primary-foreground: oklch(0.985 0.001 285.823);
-    --secondary: oklch(0.967 0.001 286.375);
-    --secondary-foreground: oklch(0.21 0.006 285.885);
-    --muted: oklch(0.967 0.001 286.375);
-    --muted-foreground: oklch(0.552 0.016 285.938);
-    --accent: oklch(0.967 0.001 286.375);
-    --accent-foreground: oklch(0.21 0.006 285.885);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.92 0.004 286.32);
-    --input: oklch(0.92 0.004 286.32);
-    --ring: oklch(0.705 0.015 286.067);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0.001 285.823);
-    --sidebar-foreground: oklch(0.141 0.005 285.823);
-    --sidebar-primary: oklch(0.21 0.006 285.885);
-    --sidebar-primary-foreground: oklch(0.985 0.001 285.823);
-    --sidebar-accent: oklch(0.967 0.001 286.375);
-    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-    --sidebar-border: oklch(0.92 0.004 286.32);
-    --sidebar-ring: oklch(0.705 0.015 286.067);
+    --background: #FBF9F5;
+    --foreground: #181512;
+    --card: #FFFFFF;
+    --card-foreground: #181512;
+    --popover: #FFFFFF;
+    --popover-foreground: #181512;
+    --primary: #FF5A2B;
+    --primary-foreground: #FFFFFF;
+    --secondary: #FFF8DC;
+    --secondary-foreground: #8C5400;
+    --muted: #F4EFE6;
+    --muted-foreground: #78716C;
+    --accent: #FFF5EB;
+    --accent-foreground: #FF5A2B;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: #EFECE6;
+    --input: #EFECE6;
+    --ring: #FF5A2B;
+    --radius: 0.75rem;
+    --sidebar: #FFFFFF;
+    --sidebar-foreground: #181512;
+    --sidebar-primary: #FF5A2B;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #FFF5EB;
+    --sidebar-accent-foreground: #FF5A2B;
+    --sidebar-border: #EFECE6;
+    --sidebar-ring: #FF5A2B;
   }
 
   .dark {
-    --background: oklch(0.141 0.005 285.823);
-    --foreground: oklch(0.985 0.001 285.823);
-    --card: oklch(0.141 0.005 285.823);
-    --card-foreground: oklch(0.985 0.001 285.823);
-    --popover: oklch(0.141 0.005 285.823);
-    --popover-foreground: oklch(0.985 0.001 285.823);
-    --primary: oklch(0.985 0.001 285.823);
-    --primary-foreground: oklch(0.21 0.006 285.885);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0.001 285.823);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
-    --accent-foreground: oklch(0.985 0.001 285.823);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.274 0.006 286.033);
-    --input: oklch(0.274 0.006 286.033);
-    --ring: oklch(0.442 0.017 285.786);
-    --sidebar: oklch(0.18 0.005 285.823);
-    --sidebar-foreground: oklch(0.985 0.001 285.823);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.274 0.006 286.033);
-    --sidebar-accent-foreground: oklch(0.985 0.001 285.823);
-    --sidebar-border: oklch(0.274 0.006 286.033);
-    --sidebar-ring: oklch(0.442 0.017 285.786);
+    --background: #141210;
+    --foreground: #F5F3EF;
+    --card: #1D1A17;
+    --card-foreground: #F5F3EF;
+    --popover: #1D1A17;
+    --popover-foreground: #F5F3EF;
+    --primary: #FF5A2B;
+    --primary-foreground: #FFFFFF;
+    --secondary: #2C2621;
+    --secondary-foreground: #FFE972;
+    --muted: #26221E;
+    --muted-foreground: #A8A29E;
+    --accent: #2C221A;
+    --accent-foreground: #FF7A00;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --border: #2C2723;
+    --input: #2C2723;
+    --ring: #FF5A2B;
+    --sidebar: #181513;
+    --sidebar-foreground: #F5F3EF;
+    --sidebar-primary: #FF5A2B;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #26211D;
+    --sidebar-accent-foreground: #FF7A00;
+    --sidebar-border: #282420;
+    --sidebar-ring: #FF5A2B;
   }
 }
 
@@ -131,5 +144,22 @@
   }
   .text-pretty {
     text-wrap: pretty;
+  }
+
+  /* Jeruk AI Card Elevation & Gradient Surfaces */
+  .shadow-jeruk {
+    box-shadow: 0 2px 14px -4px rgba(40, 30, 10, 0.05), 0 1px 3px 0 rgba(40, 30, 10, 0.03);
+  }
+  .shadow-jeruk-lg {
+    box-shadow: 0 12px 30px -8px rgba(255, 90, 43, 0.12), 0 4px 12px -2px rgba(40, 30, 10, 0.04);
+  }
+  .bg-sunlight-gradient {
+    background: linear-gradient(135deg, #FFF3B0 0%, #FFE972 50%, #FFDF40 100%);
+  }
+  .bg-butter-gradient {
+    background: linear-gradient(135deg, #FFFDF0 0%, #FFF8DC 100%);
+  }
+  .bg-espresso-gradient {
+    background: linear-gradient(135deg, #1C1917 0%, #2A241F 100%);
   }
 }
