@@ -25,6 +25,10 @@ export default async (req: Request, context: Context) => {
     const daysParam = url.searchParams.get('days');
     const days = daysParam ? parseInt(daysParam, 10) : 7;
 
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
     const db = createDb();
 
     const chartData = await db.select({
@@ -36,7 +40,7 @@ export default async (req: Request, context: Context) => {
     .where(
       and(
         eq(transactions.status, 'paid'),
-        sql`date(${transactions.createdAt}) >= date('now', '-' || ${days} || ' days')`
+        sql`date(${transactions.createdAt}) >= ${startDateStr}`
       )
     )
     .groupBy(sql`date(${transactions.createdAt})`)

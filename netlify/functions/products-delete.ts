@@ -33,7 +33,7 @@ export default async (req: Request, context: Context) => {
     const [updated] = await db.update(products)
       .set({ 
         isActive: false, 
-        updatedAt: sql`(datetime('now'))` 
+        updatedAt: new Date().toISOString() 
       })
       .where(eq(products.id, id))
       .returning();

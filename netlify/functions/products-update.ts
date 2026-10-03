@@ -49,7 +49,7 @@ export default async (req: Request, context: Context) => {
     
     const updateData = {
       ...parseResult.data,
-      updatedAt: sql`(datetime('now'))`
+      updatedAt: new Date().toISOString()
     };
     
     try {

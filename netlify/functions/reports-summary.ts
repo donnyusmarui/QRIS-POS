@@ -26,8 +26,8 @@ export default async (req: Request, context: Context) => {
     const [stats] = await db.select({
       totalRevenue: sql<number>`SUM(CASE WHEN ${transactions.status} = 'paid' THEN ${transactions.totalAmount} ELSE 0 END)`,
       totalTransactions: sql<number>`SUM(CASE WHEN ${transactions.status} = 'paid' THEN 1 ELSE 0 END)`,
-      todayRevenue: sql<number>`SUM(CASE WHEN ${transactions.status} = 'paid' AND date(${transactions.createdAt}) = date('now') THEN ${transactions.totalAmount} ELSE 0 END)`,
-      todayTransactions: sql<number>`SUM(CASE WHEN ${transactions.status} = 'paid' AND date(${transactions.createdAt}) = date('now') THEN 1 ELSE 0 END)`,
+      todayRevenue: sql<number>`SUM(CASE WHEN ${transactions.status} = 'paid' AND date(${transactions.createdAt}) = CURRENT_DATE THEN ${transactions.totalAmount} ELSE 0 END)`,
+      todayTransactions: sql<number>`SUM(CASE WHEN ${transactions.status} = 'paid' AND date(${transactions.createdAt}) = CURRENT_DATE THEN 1 ELSE 0 END)`,
     }).from(transactions);
 
     const [productsCount] = await db.select({ count: sql<number>`COUNT(*)` }).from(products);
