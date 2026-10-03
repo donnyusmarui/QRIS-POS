@@ -6,20 +6,20 @@ import {
   Send,
   Leaf,
   ShieldCheck,
-  Plus,
   Check,
   RotateCcw,
   Sparkles,
   Bot,
   ChevronDown,
-  ChevronUp,
-  Info,
   Headset,
   CheckSquare,
   Square,
   Activity,
   User,
   Phone,
+  HeartHandshake,
+  Clock,
+  ArrowRight,
 } from "lucide-react"
 
 type SessionStatus = "ai" | "waiting_admin" | "admin" | "closed"
@@ -46,29 +46,99 @@ interface CustomerLead {
   phone: string
 }
 
+interface PharmacistConfig {
+  pharmacistName: string
+  pharmacistTitle: string
+  pharmacistAvatarUrl: string
+  pharmacistStatusText: string
+  leadNudgeEnabled: boolean
+  leadNudgeTriggerMode: string
+  leadNudgeMessageCount: number
+  leadNudgeTimeMinutes: number
+  leadNudgeCooldownMinutes: number
+}
+
+interface SymptomOptionItem {
+  id: string
+  label: string
+  category: string
+  orderIndex: number
+  isActive: boolean
+  followUpQuestion?: string
+  followUpOptions?: string[]
+}
+
 const SESSION_KEY = "chat_session_id"
 const CUSTOMER_INFO_KEY = "chat_customer_info"
+const NUDGE_DISMISS_KEY = "lead_nudge_dismissed_until"
 
-const SYMPTOM_OPTIONS = [
-  { id: "tengkuk", label: "Tengkuk Kaku / Pegal" },
-  { id: "pusing", label: "Pusing / Berdenyut" },
-  { id: "kesemutan", label: "Sering Kesemutan / Kebas" },
-  { id: "sendi", label: "Nyeri Sendi / Jempol Bengkak" },
-  { id: "gula", label: "Sering Haus & Cepat Lapar" },
-  { id: "tensi", label: "Riwayat Tensi Tinggi" },
-]
+const DEFAULT_PHARMACIST_CONFIG: PharmacistConfig = {
+  pharmacistName: "Apt. Siti Rahma, S.Farm",
+  pharmacistTitle: "Apoteker Pendamping Klinis",
+  pharmacistAvatarUrl: "https://images.unsplash.com/photo-1594824813583-1e5f8f9e7c5b?auto=format&fit=crop&w=400&q=80",
+  pharmacistStatusText: "Online • Siap Mendengarkan",
+  leadNudgeEnabled: true,
+  leadNudgeTriggerMode: "message_count",
+  leadNudgeMessageCount: 3,
+  leadNudgeTimeMinutes: 2,
+  leadNudgeCooldownMinutes: 10,
+}
 
-const DURATION_OPTIONS = [
-  { id: "under_3d", label: "Kurang dari 3 hari" },
-  { id: "1_2w", label: "1 - 2 minggu" },
-  { id: "over_1m", label: "Lebih dari 1 bulan" },
-]
-
-const LAB_OPTIONS = [
-  { id: "kolesterol", label: "Kolesterol > 200" },
-  { id: "tensi", label: "Tensi > 140/90" },
-  { id: "asam_urat", label: "Asam Urat Tinggi" },
-  { id: "belum_cek", label: "Belum pernah cek lab" },
+const DEFAULT_SYMPTOMS: SymptomOptionItem[] = [
+  {
+    id: "sym_01",
+    label: "Tengkuk Kaku / Leher Tegang",
+    category: "kolesterol",
+    orderIndex: 1,
+    isActive: true,
+    followUpQuestion: "Berapa lama keluhan tengkuk kaku ini Anda rasakan?",
+    followUpOptions: ["Kurang dari 3 hari", "1 - 2 minggu", "Lebih dari 1 bulan", "Tensi terakhir > 140/90"],
+  },
+  {
+    id: "sym_02",
+    label: "Pusing / Kepala Berdenyut",
+    category: "hipertensi",
+    orderIndex: 2,
+    isActive: true,
+    followUpQuestion: "Kapan pusing atau kepala berdenyut paling sering muncul?",
+    followUpOptions: ["Saat bangun tidur", "Saat lelah atau stres", "Sore menjelang malam", "Disertai pandangan kabur"],
+  },
+  {
+    id: "sym_03",
+    label: "Sering Kesemutan / Kebas",
+    category: "umum",
+    orderIndex: 3,
+    isActive: true,
+    followUpQuestion: "Di bagian tubuh mana kesemutan paling dominan dirasakan?",
+    followUpOptions: ["Ujung jari tangan", "Telapak kaki / tumit", "Separuh badan kiri/kanan", "Hanya saat duduk bersila"],
+  },
+  {
+    id: "sym_04",
+    label: "Nyeri Sendi / Jempol Bengkak",
+    category: "asam_urat",
+    orderIndex: 4,
+    isActive: true,
+    followUpQuestion: "Bagaimana karakteristik nyeri sendi yang Anda rasakan?",
+    followUpOptions: ["Jempol kaki bengkak & merah", "Lutut ngilu / berbunyi", "Asam urat terakhir > 7.0 mg/dL", "Belum pernah cek lab"],
+  },
+  {
+    id: "sym_05",
+    label: "Sering Haus & Cepat Lapar",
+    category: "diabetes",
+    orderIndex: 5,
+    isActive: true,
+    followUpQuestion: "Apakah sudah pernah melakukan pengecekan gula darah?",
+    followUpOptions: ["Gula darah puasa > 126 mg/dL", "Gula darah sewaktu > 200 mg/dL", "Ada riwayat diabetes keluarga", "Belum pernah cek lab"],
+  },
+  {
+    id: "sym_06",
+    label: "Dada Berat / Nafas Pendek",
+    category: "kolesterol",
+    orderIndex: 6,
+    isActive: true,
+    followUpQuestion: "Kapan dada terasa berat atau nafas terasa pendek?",
+    followUpOptions: ["Saat jalan cepat / naik tangga", "Saat berbaring / istirahat", "Disertai keringat dingin", "Disertai jantung berdebar"],
+  },
 ]
 
 const QUICK_PROMPTS = [
@@ -99,19 +169,17 @@ function RichText({ text }: { text: string }) {
         }
         const parts = paragraph.split(/(\*\*.*?\*\*)/g)
         return (
-          <p
-            key={pIdx}
-            className={`font-normal text-stone-700 leading-relaxed [text-wrap:pretty] ${paragraph.startsWith("• ") ? "pl-2" : ""}`}
-          >
-            {parts.map((part, i) =>
-              part.startsWith("**") && part.endsWith("**") ? (
-                <strong key={i} className="font-semibold text-stone-900">
-                  {part.slice(2, -2)}
-                </strong>
-              ) : (
-                part
-              ),
-            )}
+          <p key={pIdx} className="leading-relaxed">
+            {parts.map((part, idx) => {
+              if (part.startsWith("**") && part.endsWith("**")) {
+                return (
+                  <strong key={idx} className="font-semibold text-stone-900">
+                    {part.slice(2, -2)}
+                  </strong>
+                )
+              }
+              return <span key={idx}>{part}</span>
+            })}
           </p>
         )
       })}
@@ -119,13 +187,16 @@ function RichText({ text }: { text: string }) {
   )
 }
 
-// Efek ketikan bertahap; memanggil onDone saat seluruh teks sudah tampil
-function TypedText({ text, onTick, onDone }: { text: string; onTick: () => void; onDone: () => void }) {
+function TypedText({ text, onDone, onTick }: { text: string; onDone: () => void; onTick: () => void }) {
   const [n, setN] = useState(0)
+  const doneRef = useRef(false)
 
   useEffect(() => {
     if (n >= text.length) {
-      onDone()
+      if (!doneRef.current) {
+        doneRef.current = true
+        onDone()
+      }
       return
     }
     const t = setTimeout(() => {
@@ -136,25 +207,6 @@ function TypedText({ text, onTick, onDone }: { text: string; onTick: () => void;
   }, [n, text, onDone, onTick])
 
   return <RichText text={text.slice(0, n)} />
-}
-
-function TypingIndicator() {
-  return (
-    <div className="flex items-start gap-2">
-      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 shrink-0">
-        <Bot className="h-4 w-4" />
-      </div>
-      <div
-        className="rounded-2xl rounded-bl-none bg-white px-3.5 py-3 shadow-xs border border-stone-200 flex items-center gap-1.5"
-        role="status"
-        aria-label="Asisten sedang mengetik"
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce" />
-        <span className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:0.15s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:0.3s]" />
-      </div>
-    </div>
-  )
 }
 
 export function CustomerChatbotWidget({
@@ -169,6 +221,9 @@ export function CustomerChatbotWidget({
   const [addedProductId, setAddedProductId] = useState<string | null>(null)
   const [status, setStatus] = useState<SessionStatus>("ai")
 
+  // Pharmacist persona & config
+  const [config, setConfig] = useState<PharmacistConfig>(DEFAULT_PHARMACIST_CONFIG)
+
   // Lead capture state
   const [customerLead, setCustomerLead] = useState<CustomerLead | null>(() => {
     try {
@@ -179,19 +234,23 @@ export function CustomerChatbotWidget({
     }
   })
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showSoftNudge, setShowSoftNudge] = useState(false)
   const [leadNameInput, setLeadNameInput] = useState("")
   const [leadPhoneInput, setLeadPhoneInput] = useState("")
+  const [nudgeNameInput, setNudgeNameInput] = useState("")
+  const [nudgePhoneInput, setNudgePhoneInput] = useState("")
 
   // Interactive Symptom Assessment state
+  const [symptomList, setSymptomList] = useState<SymptomOptionItem[]>(DEFAULT_SYMPTOMS)
   const [isTriageOpen, setIsTriageOpen] = useState(false)
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([])
-  const [selectedDuration, setSelectedDuration] = useState<string>("")
-  const [selectedLab, setSelectedLab] = useState<string>("")
+  const [selectedFollowUp, setSelectedFollowUp] = useState<string>("")
 
   // Active welcome text from server
   const [serverWelcome, setServerWelcome] = useState<string>(DEFAULT_WELCOME)
 
   const { addToCart } = useCustomerCartStore()
+  const chatOpenTimeRef = useRef<number>(Date.now())
 
   // Format dynamic welcome text
   const getWelcomeContent = useCallback(() => {
@@ -221,16 +280,26 @@ export function CustomerChatbotWidget({
 
   useEffect(() => {
     if (isOpen && !isMinimized) scrollToBottom()
-  }, [messages, isOpen, isMinimized, isTyping, isTriageOpen, showOnboarding, scrollToBottom])
+  }, [messages, isOpen, isMinimized, isTyping, isTriageOpen, showOnboarding, showSoftNudge, scrollToBottom])
 
-  // Fetch active welcome message from server
+  // Fetch active welcome message, symptoms list, and chatbot persona config
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch("/api/welcome-message-active")
-        const json = await res.json()
-        if (json.success && json.data?.content) {
-          setServerWelcome(json.data.content)
+        const [wRes, cRes, sRes] = await Promise.allSettled([
+          fetch("/api/welcome-message-active").then((r) => r.json()),
+          fetch("/api/chatbot-config-get").then((r) => r.json()),
+          fetch("/api/symptom-options-list").then((r) => r.json()),
+        ])
+
+        if (wRes.status === "fulfilled" && wRes.value?.success && wRes.value.data?.content) {
+          setServerWelcome(wRes.value.data.content)
+        }
+        if (cRes.status === "fulfilled" && cRes.value?.success && cRes.value.data) {
+          setConfig(cRes.value.data)
+        }
+        if (sRes.status === "fulfilled" && sRes.value?.success && Array.isArray(sRes.value.data) && sRes.value.data.length > 0) {
+          setSymptomList(sRes.value.data)
         }
       } catch {
         // Fallback default
@@ -238,12 +307,39 @@ export function CustomerChatbotWidget({
     })()
   }, [])
 
-  // Prompt onboarding if lead is not yet captured
+  // Timer check for Time-based Soft Nudge trigger
   useEffect(() => {
-    if (isOpen && !customerLead) {
-      setShowOnboarding(true)
+    if (!isOpen || customerLead || !config.leadNudgeEnabled) return
+
+    const timer = setInterval(() => {
+      const mode = config.leadNudgeTriggerMode
+      if (mode === "time_minutes" || mode === "both") {
+        const elapsedMinutes = (Date.now() - chatOpenTimeRef.current) / 60000
+        if (elapsedMinutes >= config.leadNudgeTimeMinutes) {
+          const dismissedUntil = sessionStorage.getItem(NUDGE_DISMISS_KEY)
+          if (!dismissedUntil || Date.now() > Number(dismissedUntil)) {
+            setShowSoftNudge(true)
+          }
+        }
+      }
+    }, 15000)
+
+    return () => clearInterval(timer)
+  }, [isOpen, customerLead, config])
+
+  // Function to evaluate message-based soft nudge
+  const checkMessageCountNudge = useCallback((newUserMsgCount: number) => {
+    if (customerLead || !config.leadNudgeEnabled) return
+    const mode = config.leadNudgeTriggerMode
+    if (mode === "message_count" || mode === "both") {
+      if (newUserMsgCount >= config.leadNudgeMessageCount) {
+        const dismissedUntil = sessionStorage.getItem(NUDGE_DISMISS_KEY)
+        if (!dismissedUntil || Date.now() > Number(dismissedUntil)) {
+          setShowSoftNudge(true)
+        }
+      }
     }
-  }, [isOpen, customerLead])
+  }, [customerLead, config])
 
   // Pulihkan percakapan sebelumnya bila sesi masih tersimpan
   useEffect(() => {
@@ -258,47 +354,51 @@ export function CustomerChatbotWidget({
           return
         }
         const json = await res.json()
-        if (!json.success) return
-        const restored: PollMessage[] = json.data.messages || []
-        restored.forEach((m) => m.sender === "admin" && seenAdminIds.current.add(m.id))
-        if (restored.length > 0) {
-          setMessages([
-            welcomeMessage(),
-            ...restored.map<ChatMessage>((m) => ({
-              id: m.id,
-              sender: m.sender === "customer" ? "user" : m.sender,
-              text: m.content,
-              products: m.products,
-              timestamp: clock(m.createdAt),
-            })),
-          ])
+        if (!json.success || !Array.isArray(json.data?.messages)) return
+
+        const loaded: ChatMessage[] = json.data.messages.map((m: PollMessage) => ({
+          id: m.id,
+          sender: m.sender === "customer" ? "user" : m.sender === "admin" ? "admin" : "bot",
+          text: m.content,
+          products: m.products,
+          timestamp: clock(m.createdAt),
+          animate: false,
+        }))
+        if (loaded.length > 0) {
+          setMessages(loaded)
+          loaded
+            .filter((m) => m.sender === "admin")
+            .forEach((m) => seenAdminIds.current.add(m.id))
         }
-        setStatus(json.data.status)
+        if (json.data.status) setStatus(json.data.status)
       } catch {
-        // abaikan: mulai percakapan baru
+        // Abaikan kegagalan jaringan awal
       }
     })()
-  }, [welcomeMessage])
+  }, [])
 
-  // Polling balasan admin selama sesi diserahkan ke manusia
+  // Polling pesan baru dari admin
   useEffect(() => {
-    if (!isOpen || (status !== "waiting_admin" && status !== "admin")) return
+    if (!isOpen || status === "closed") return
     const sid = sessionIdRef.current
     if (!sid) return
 
     const poll = async () => {
       try {
         const res = await fetch(`/api/chat-poll?sessionId=${encodeURIComponent(sid)}`)
+        if (!res.ok) return
         const json = await res.json()
-        if (!json.success) return
-        const incoming: PollMessage[] = json.data.messages || []
+        if (!json.success || !Array.isArray(json.data?.messages)) return
 
-        const fresh = incoming.filter((m) => m.sender === "admin" && !seenAdminIds.current.has(m.id))
-        fresh.forEach((m) => seenAdminIds.current.add(m.id))
-        if (fresh.length > 0) {
+        const freshAdmin = (json.data.messages as PollMessage[]).filter(
+          (m) => m.sender === "admin" && !seenAdminIds.current.has(m.id),
+        )
+
+        if (freshAdmin.length > 0) {
+          freshAdmin.forEach((m) => seenAdminIds.current.add(m.id))
           setMessages((prev) => [
             ...prev,
-            ...fresh.map<ChatMessage>((m) => ({
+            ...freshAdmin.map<ChatMessage>((m) => ({
               id: m.id,
               sender: "admin",
               text: m.content,
@@ -308,7 +408,7 @@ export function CustomerChatbotWidget({
         }
 
         const next: SessionStatus = json.data.status
-        if (next === "ai") {
+        if (next === "ai" && status !== "ai") {
           setMessages((prev) => [
             ...prev,
             {
@@ -347,37 +447,62 @@ export function CustomerChatbotWidget({
     localStorage.setItem(CUSTOMER_INFO_KEY, JSON.stringify(lead))
     setShowOnboarding(false)
 
-    // Sapa dengan hangat secara personal
     pushBot(
       `Terima kasih banyak, Kak ${name}! Senang bisa mendampingi Anda hari ini 🙏\n\nApa keluhan atau kondisi kesehatan yang sedang Anda rasakan? Kami siap mendengarkan.`,
       undefined,
-      true
+      true,
     )
+  }
+
+  const handleSaveNudge = (e: React.FormEvent) => {
+    e.preventDefault()
+    const name = (nudgeNameInput || customerLead?.name || "").trim()
+    const phone = nudgePhoneInput.trim()
+    if (!name || !phone) return
+
+    const lead: CustomerLead = { name, phone }
+    setCustomerLead(lead)
+    localStorage.setItem(CUSTOMER_INFO_KEY, JSON.stringify(lead))
+    setShowSoftNudge(false)
+
+    // Notify user via bot
+    pushBot(
+      `Terima kasih Kak ${name}! Riwayat konsultasi & rekomendasi resep herbal Anda telah kami amankan untuk pengiriman via WhatsApp (${phone}) 🌿 Mari kita lanjutkan ikhtiar sehat ini.`,
+      undefined,
+      true,
+    )
+  }
+
+  const handleDismissNudge = () => {
+    setShowSoftNudge(false)
+    const cooldownMs = config.leadNudgeCooldownMinutes * 60 * 1000
+    sessionStorage.setItem(NUDGE_DISMISS_KEY, String(Date.now() + cooldownMs))
   }
 
   const toggleSymptom = (label: string) => {
     setSelectedSymptoms((prev) =>
-      prev.includes(label) ? prev.filter((s) => s !== label) : [...prev, label]
+      prev.includes(label) ? prev.filter((s) => s !== label) : [...prev, label],
     )
   }
+
+  // Get active drill-down question and options from selected symptoms
+  const activeSymptomWithFollowUp = symptomList.find(
+    (s) => selectedSymptoms.includes(s.label) && s.followUpQuestion && s.followUpOptions && s.followUpOptions.length > 0,
+  )
 
   const handleSendSymptoms = () => {
     if (selectedSymptoms.length === 0) return
 
     const parts: string[] = []
     parts.push(`Saya merasakan keluhan: ${selectedSymptoms.join(", ")}.`)
-    if (selectedDuration) {
-      const durObj = DURATION_OPTIONS.find((d) => d.id === selectedDuration)
-      if (durObj) parts.push(`Durasi keluhan: ${durObj.label}.`)
+    if (selectedFollowUp) {
+      parts.push(`Catatan kondisi: ${selectedFollowUp}.`)
     }
-    if (selectedLab) {
-      const labObj = LAB_OPTIONS.find((l) => l.id === selectedLab)
-      if (labObj) parts.push(`Hasil cek/kondisi: ${labObj.label}.`)
-    }
-    parts.push("Mohon rekomendasi herbal berizin resmi BPOM yang sesuai.")
+    parts.push("Mohon arahan dan edukasi seputar keluhan ini.")
 
     const text = parts.join(" ")
     setIsTriageOpen(false)
+    setSelectedFollowUp("")
     handleSendMessage(text, selectedSymptoms)
   }
 
@@ -394,6 +519,10 @@ export function CustomerChatbotWidget({
     const handedOff = status === "waiting_admin" || status === "admin"
     if (!handedOff) setIsTyping(true)
     const startedAt = Date.now()
+
+    // Calculate user message count for nudge trigger
+    const currentUserMsgs = messages.filter((m) => m.sender === "user").length + 1
+    checkMessageCountNudge(currentUserMsgs)
 
     try {
       const res = await fetch("/api/consultation-chat", {
@@ -420,7 +549,7 @@ export function CustomerChatbotWidget({
 
       if (!d.reply) return
 
-      const typingMs = Math.min(2800, 900 + String(d.reply).length * 12)
+      const typingMs = Math.min(2600, 800 + String(d.reply).length * 10)
       const wait = Math.max(0, typingMs - (Date.now() - startedAt))
       await new Promise((r) => setTimeout(r, wait))
 
@@ -451,9 +580,22 @@ export function CustomerChatbotWidget({
         body: JSON.stringify({ sessionId: sid, action: "resume_ai" }),
       })
       setStatus("ai")
-      pushBot("Baik, saya kembali mendampingi Anda ya 😊 Silakan lanjutkan ceritanya.")
+      pushBot("Baik, saya kembali mendampingi konsultasi Anda 🙏 Ada keluhan lain yang ingin ditanyakan?")
     } catch {
-      // biarkan status apa adanya
+      // Abaikan
+    }
+  }
+
+  const resetChat = () => {
+    if (confirm("Mulai sesi konsultasi baru? Riwayat chat sebelumnya akan dibersihkan.")) {
+      localStorage.removeItem(SESSION_KEY)
+      sessionIdRef.current = null
+      seenAdminIds.current.clear()
+      setStatus("ai")
+      setSelectedSymptoms([])
+      setSelectedFollowUp("")
+      setMessages([welcomeMessage()])
+      chatOpenTimeRef.current = Date.now()
     }
   }
 
@@ -463,103 +605,95 @@ export function CustomerChatbotWidget({
     setTimeout(() => setAddedProductId(null), 2000)
   }
 
-  const resetChat = () => {
-    localStorage.removeItem(SESSION_KEY)
-    sessionIdRef.current = null
-    seenAdminIds.current = new Set()
-    setStatus("ai")
-    setIsTyping(false)
-    setSelectedSymptoms([])
-    setSelectedDuration("")
-    setSelectedLab("")
-    setMessages([welcomeMessage()])
-  }
-
   const handedOff = status === "waiting_admin" || status === "admin"
 
   return (
-    <>
+    <aside aria-label="Widget Konsultasi Herbal & Resep" className="relative z-50">
       {/* ── FLOATING TRIGGER BUTTON ── */}
       {!isOpen && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 animate-in fade-in zoom-in duration-300">
-          <div className="relative group">
-            <div className="hidden sm:flex absolute -top-10 right-0 items-center gap-1.5 whitespace-nowrap rounded-xl bg-stone-900 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg pointer-events-none opacity-90 group-hover:opacity-100 transition">
-              <Sparkles className="h-3 w-3 text-amber-400" />
-              <span>Tanya Apoteker Herbal AI</span>
-              <div className="absolute -bottom-1 right-6 h-2 w-2 rotate-45 bg-stone-900" />
+        <button
+          type="button"
+          onClick={() => {
+            setIsOpen(true)
+            setIsMinimized(false)
+            chatOpenTimeRef.current = Date.now()
+            if (!customerLead) setShowOnboarding(true)
+          }}
+          className="fixed bottom-6 right-6 flex items-center gap-2.5 rounded-full bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 px-4 py-3.5 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 ring-2 ring-emerald-600/30 group cursor-pointer"
+          aria-label="Konsultasi Herbal dengan Apoteker"
+        >
+          <div className="relative">
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-white/20 ring-1 ring-white/40 flex items-center justify-center">
+              {config.pharmacistAvatarUrl ? (
+                <img src={config.pharmacistAvatarUrl} alt={config.pharmacistName} className="h-full w-full object-cover" />
+              ) : (
+                <Leaf className="h-5 w-5 text-emerald-100" />
+              )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(true)
-                setIsMinimized(false)
-              }}
-              className="relative flex items-center gap-2.5 rounded-full bg-linear-to-r from-emerald-700 to-teal-800 px-4 sm:px-5 py-3 text-white shadow-xl shadow-emerald-800/30 ring-2 ring-emerald-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-              aria-label="Buka konsultasi kesehatan"
-            >
-              <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white">
-                <Bot className="h-5 w-5" />
-                <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 ring-2 ring-white" />
-                </span>
-              </div>
-              <div className="text-left pr-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-200 leading-none">
-                  Asisten Apotek
-                </p>
-                <p className="text-xs sm:text-sm font-bold text-white leading-tight">Konsultasi Herbal 🌿</p>
-              </div>
-            </button>
+            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-800" />
           </div>
-        </div>
+          <div className="text-left hidden sm:block pr-1">
+            <p className="text-xs font-bold leading-tight flex items-center gap-1.5">
+              <span>Konsultasi Apoteker</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </p>
+            <p className="text-[10px] text-emerald-200">{config.pharmacistName}</p>
+          </div>
+        </button>
       )}
 
-      {/* ── CHAT WINDOW ── */}
+      {/* ── CHAT WINDOW CONTAINER ── */}
       {isOpen && (
         <div
-          className={`fixed z-50 transition-all duration-300 ease-out ${
+          role="region"
+          aria-label="Jendela Chatbot Herbal"
+          className={`fixed z-50 transition-all duration-300 ${
             isMinimized
-              ? "bottom-4 right-4 sm:right-6 w-72 rounded-2xl bg-white shadow-2xl border border-stone-200"
-              : "inset-x-2 bottom-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[450px] max-h-[88vh] sm:max-h-[660px] h-[82vh] sm:h-[620px] rounded-3xl bg-white shadow-2xl border border-stone-200 flex flex-col overflow-hidden ring-1 ring-black/5"
+              ? "right-6 bottom-6 w-80 rounded-2xl bg-white shadow-xl border border-stone-200 overflow-hidden"
+              : "inset-x-2 bottom-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[460px] max-h-[90vh] sm:max-h-[680px] h-[85vh] sm:h-[640px] rounded-3xl bg-white shadow-2xl border border-stone-200 flex flex-col overflow-hidden ring-1 ring-black/5"
           }`}
         >
           {/* Header */}
           <div className="bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 p-3.5 sm:p-4 text-white flex items-center justify-between shadow-xs shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-2xl bg-white/15 text-white">
-                {handedOff ? <Headset className="h-5 w-5 text-emerald-100" /> : <Leaf className="h-5 w-5 text-emerald-200" />}
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-800" />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-white overflow-hidden shrink-0 ring-1 ring-white/30">
+                {config.pharmacistAvatarUrl ? (
+                  <img src={config.pharmacistAvatarUrl} alt={config.pharmacistName} className="h-full w-full object-cover" />
+                ) : (
+                  <Leaf className="h-5 w-5 text-emerald-200" />
+                )}
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-emerald-800" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-white leading-tight flex items-center gap-1.5">
-                  {status === "admin" ? "Apoteker / Admin Apotek" : "Asisten Kesehatan Herbal"}
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-white leading-tight flex items-center gap-1.5 truncate">
+                  <span className="truncate">{status === "admin" ? "Admin Apotek (Live)" : config.pharmacistName}</span>
                   {customerLead?.name && (
-                    <span className="text-[11px] font-normal text-emerald-200 bg-white/10 px-1.5 py-0.5 rounded-md">
+                    <span className="text-[10px] font-normal text-emerald-200 bg-white/15 px-1.5 py-0.5 rounded-md shrink-0">
                       Kak {customerLead.name}
                     </span>
                   )}
                 </h3>
-                <p className="text-[10px] text-emerald-200 flex items-center gap-1">
-                  <ShieldCheck className="h-3 w-3 text-emerald-300" />
-                  {status === "admin"
-                    ? "Terhubung dengan admin"
-                    : status === "waiting_admin"
-                      ? "Menunggu respon admin..."
-                      : isTyping
-                        ? "sedang mengetik..."
-                        : "Resmi BPOM & Halal"}
+                <p className="text-[10px] text-emerald-200 flex items-center gap-1 truncate">
+                  <ShieldCheck className="h-3 w-3 text-emerald-300 shrink-0" />
+                  <span className="truncate">
+                    {status === "admin"
+                      ? "Terhubung dengan admin"
+                      : status === "waiting_admin"
+                        ? "Menunggu respon admin..."
+                        : isTyping
+                          ? "sedang meracik jawaban..."
+                          : config.pharmacistStatusText}
+                  </span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-emerald-100">
+            <div className="flex items-center gap-1 text-emerald-100 shrink-0">
               <button
                 type="button"
                 onClick={resetChat}
                 title="Mulai percakapan baru"
-                className="p-2 rounded-lg hover:bg-white/10 hover:text-white transition"
+                className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition cursor-pointer"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -567,7 +701,7 @@ export function CustomerChatbotWidget({
                 type="button"
                 onClick={() => setIsMinimized(!isMinimized)}
                 title={isMinimized ? "Perbesar" : "Kecilkan"}
-                className="p-2 rounded-lg hover:bg-white/10 hover:text-white transition"
+                className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition cursor-pointer"
               >
                 <ChevronDown className={`h-4 w-4 transform transition-transform ${isMinimized ? "rotate-180" : ""}`} />
               </button>
@@ -575,7 +709,7 @@ export function CustomerChatbotWidget({
                 type="button"
                 onClick={() => setIsOpen(false)}
                 title="Tutup"
-                className="p-2 rounded-lg hover:bg-white/10 hover:text-white transition"
+                className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -605,7 +739,7 @@ export function CustomerChatbotWidget({
                   <button
                     type="button"
                     onClick={resumeAi}
-                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 font-semibold text-amber-900 hover:bg-amber-100 transition"
+                    className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 font-semibold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
                   >
                     Lanjut dengan AI
                   </button>
@@ -613,10 +747,75 @@ export function CustomerChatbotWidget({
               )}
 
               {/* Message List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-50/60">
-                {/* Onboarding Lead Capture Card (Tampil jika belum isi identitas) */}
-                {showOnboarding && !customerLead && (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 text-xs space-y-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-stone-50/60 relative">
+                {/* ── MODUL 1: SOFT LEAD-CAPTURE NUDGE BANNER ── */}
+                {showSoftNudge && !customerLead && (
+                  <div className="rounded-2xl border border-amber-300 bg-linear-to-b from-amber-50 to-orange-50/60 p-4 text-xs space-y-3 shadow-md animate-in fade-in slide-in-from-top-3 duration-300 sticky top-0 z-20">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 text-amber-950 font-bold">
+                        <HeartHandshake className="h-4 w-4 text-emerald-700 shrink-0" />
+                        <span className="leading-snug">Ingin Rangkuman Resep Herbal Ini Dikirimkan ke Anda?</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDismissNudge}
+                        className="text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer shrink-0"
+                        title="Tutup"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <p className="text-stone-700 leading-relaxed text-[11px]">
+                      Simpan riwayat konsultasi Anda agar kami dapat mengirimkan salinan rekomendasi herbal, dosis aman, dan panduan pola makan personal langsung ke WhatsApp Anda tanpa biaya.
+                    </p>
+                    <form onSubmit={handleSaveNudge} className="space-y-2 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="relative">
+                          <User className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-stone-400" />
+                          <input
+                            type="text"
+                            required
+                            value={nudgeNameInput}
+                            onChange={(e) => setNudgeNameInput(e.target.value)}
+                            placeholder="Nama Anda"
+                            className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600"
+                          />
+                        </div>
+                        <div className="relative">
+                          <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-stone-400" />
+                          <input
+                            type="tel"
+                            required
+                            value={nudgePhoneInput}
+                            onChange={(e) => setNudgePhoneInput(e.target.value)}
+                            placeholder="No. WhatsApp (08xxx)"
+                            className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="submit"
+                          className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 px-3 rounded-xl transition shadow-xs text-xs active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>Simpan Rekap Konsultasi Saya</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDismissNudge}
+                          className="text-stone-600 hover:text-stone-800 text-xs px-2 py-2 cursor-pointer font-medium"
+                        >
+                          Nanti Saja
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Onboarding Lead Capture Card (Tampil di awal jika belum ada identitas) */}
+                {showOnboarding && !customerLead && !showSoftNudge && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs space-y-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-emerald-900 font-bold">
                         <Sparkles className="h-4 w-4 text-amber-500" />
@@ -625,52 +824,50 @@ export function CustomerChatbotWidget({
                       <button
                         type="button"
                         onClick={() => setShowOnboarding(false)}
-                        className="text-stone-400 hover:text-stone-600 p-0.5"
+                        className="text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
                         title="Lewati"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <p className="text-stone-600 leading-relaxed">
+                    <p className="text-stone-600 leading-relaxed text-[11px]">
                       Untuk kenyamanan konsultasi, pencatatan riwayat kesehatan, dan kemudahan pengiriman rekomendasi resep personal, mohon perkenalkan diri Anda:
                     </p>
                     <form onSubmit={handleSaveLead} className="space-y-2">
-                      <div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div className="relative">
-                          <User className="absolute left-3 top-2.5 h-3.5 w-3.5 text-stone-400" />
+                          <User className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-stone-400" />
                           <input
                             type="text"
                             required
                             value={leadNameInput}
                             onChange={(e) => setLeadNameInput(e.target.value)}
                             placeholder="Nama Lengkap / Panggilan"
-                            className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-3 py-2 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600"
+                            className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600"
                           />
                         </div>
-                      </div>
-                      <div>
                         <div className="relative">
-                          <Phone className="absolute left-3 top-2.5 h-3.5 w-3.5 text-stone-400" />
+                          <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-stone-400" />
                           <input
                             type="tel"
                             value={leadPhoneInput}
                             onChange={(e) => setLeadPhoneInput(e.target.value)}
-                            placeholder="No. WhatsApp Aktif (08xxx)"
-                            className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-3 py-2 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600"
+                            placeholder="No. WhatsApp (opsional)"
+                            className="w-full bg-white border border-stone-200 rounded-xl pl-8 pr-2.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600"
                           />
                         </div>
                       </div>
                       <div className="flex items-center gap-2 pt-1">
                         <button
                           type="submit"
-                          className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-3 rounded-xl transition shadow-xs text-xs active:scale-95"
+                          className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-2 px-3 rounded-xl transition shadow-xs text-xs active:scale-95 cursor-pointer"
                         >
                           Mulai Konsultasi Sehat
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowOnboarding(false)}
-                          className="text-stone-500 hover:text-stone-700 text-xs px-2 py-2"
+                          className="text-stone-500 hover:text-stone-700 text-xs px-2 py-2 cursor-pointer"
                         >
                           Nanti saja
                         </button>
@@ -679,13 +876,30 @@ export function CustomerChatbotWidget({
                   </div>
                 )}
 
+                {/* Render Messages */}
                 {messages.map((m) => (
                   <div key={m.id} className={`flex flex-col ${m.sender === "user" ? "items-end" : "items-start"}`}>
+                    {/* Header nama pengirim bot / admin */}
+                    {m.sender === "bot" && (
+                      <div className="flex items-center gap-1.5 mb-1 px-1">
+                        <div className="h-4 w-4 rounded-full overflow-hidden bg-emerald-100 shrink-0">
+                          {config.pharmacistAvatarUrl ? (
+                            <img src={config.pharmacistAvatarUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <Bot className="h-3 w-3 text-emerald-700 m-0.5" />
+                          )}
+                        </div>
+                        <span className="text-[10px] font-semibold text-emerald-800">
+                          {config.pharmacistName}
+                        </span>
+                      </div>
+                    )}
                     {m.sender === "admin" && (
                       <span className="mb-1 px-1 text-[10px] font-semibold text-amber-700 flex items-center gap-1">
                         <Headset className="h-3 w-3" /> Admin Apotek
                       </span>
                     )}
+
                     <div
                       className={`max-w-[88%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-xs ${
                         m.sender === "user"
@@ -739,7 +953,7 @@ export function CustomerChatbotWidget({
                                   <button
                                     type="button"
                                     onClick={() => handleAddToCartFromBot(p)}
-                                    className={`shrink-0 min-h-[36px] rounded-lg px-3 text-[11px] font-semibold transition flex items-center gap-1 ${
+                                    className={`shrink-0 min-h-[36px] rounded-lg px-3 text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer ${
                                       isAdded
                                         ? "bg-emerald-600 text-white"
                                         : "bg-[#FF5A2B] text-white hover:bg-[#E5481B] active:scale-95 shadow-xs"
@@ -748,13 +962,10 @@ export function CustomerChatbotWidget({
                                     {isAdded ? (
                                       <>
                                         <Check className="h-3 w-3" />
-                                        <span>Masuk!</span>
+                                        <span>Masuk</span>
                                       </>
                                     ) : (
-                                      <>
-                                        <Plus className="h-3 w-3" />
-                                        <span>Beli</span>
-                                      </>
+                                      <span>+ Beli</span>
                                     )}
                                   </button>
                                 </div>
@@ -764,181 +975,174 @@ export function CustomerChatbotWidget({
                         </div>
                       )}
                     </div>
-                    <span className="text-[10px] text-stone-400 mt-1 px-1">{m.timestamp}</span>
+                    <span className="mt-1 px-1 text-[9px] text-stone-400">{m.timestamp}</span>
                   </div>
                 ))}
 
-                {isTyping && <TypingIndicator />}
+                {isTyping && (
+                  <div className="flex items-start gap-2">
+                    <div className="h-6 w-6 rounded-full overflow-hidden bg-emerald-100 shrink-0">
+                      {config.pharmacistAvatarUrl ? (
+                        <img src={config.pharmacistAvatarUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Bot className="h-3.5 w-3.5 text-emerald-700 m-1" />
+                      )}
+                    </div>
+                    <div
+                      className="rounded-2xl rounded-bl-none bg-white px-3.5 py-3 shadow-xs border border-stone-200 flex items-center gap-1.5"
+                      role="status"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:0.15s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400 animate-bounce [animation-delay:0.3s]" />
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* ── MODUL 3: INTERACTIVE SYMPTOM ASSESSMENT DRAWER ── */}
+              {/* ── INTERACTIVE SYMPTOM ASSESSMENT DRAWER (MODUL 2 & 3) ── */}
               {isTriageOpen && (
-                <div className="border-t border-emerald-200 bg-emerald-50/90 p-3.5 space-y-3 animate-in slide-in-from-bottom-2 duration-200 shrink-0 max-h-[260px] overflow-y-auto">
+                <div className="border-t border-emerald-100 bg-emerald-50/90 p-3.5 text-xs space-y-3 max-h-64 overflow-y-auto shrink-0 shadow-inner">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-bold text-emerald-950 flex items-center gap-1.5">
+                    <p className="font-bold text-emerald-950 flex items-center gap-1.5">
                       <Activity className="h-3.5 w-3.5 text-emerald-700" />
-                      Pilih Gejala yang Dirasakan (Bisa &gt; 1)
+                      Pilih Gejala yang Dirasakan (Bisa &gt; 1):
                     </p>
                     <button
                       type="button"
                       onClick={() => setIsTriageOpen(false)}
-                      className="text-stone-400 hover:text-stone-600 p-0.5"
+                      className="text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
 
-                  {/* Checklist Buttons */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {SYMPTOM_OPTIONS.map((sym) => {
-                      const isChecked = selectedSymptoms.includes(sym.label)
+                  {/* Multi-Select Symptom Chips */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {symptomList.map((item) => {
+                      const active = selectedSymptoms.includes(item.label)
                       return (
                         <button
-                          key={sym.id}
+                          key={item.id}
                           type="button"
-                          onClick={() => toggleSymptom(sym.label)}
-                          className={`flex items-center gap-2 p-2 rounded-xl border text-left text-[11px] transition ${
-                            isChecked
-                              ? "bg-emerald-700 border-emerald-800 text-white font-semibold shadow-xs"
-                              : "bg-white border-stone-200 text-stone-700 hover:border-emerald-300"
+                          onClick={() => toggleSymptom(item.label)}
+                          className={`flex items-center gap-1.5 p-2 rounded-xl border text-left text-[11px] transition cursor-pointer ${
+                            active
+                              ? "border-emerald-600 bg-emerald-100/90 text-emerald-900 font-bold shadow-xs"
+                              : "border-stone-200 bg-white text-stone-700 hover:border-emerald-300"
                           }`}
                         >
-                          {isChecked ? (
-                            <CheckSquare className="h-3.5 w-3.5 shrink-0 text-white" />
+                          {active ? (
+                            <CheckSquare className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
                           ) : (
-                            <Square className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                            <Square className="h-3.5 w-3.5 text-stone-400 shrink-0" />
                           )}
-                          <span className="truncate">{sym.label}</span>
+                          <span className="line-clamp-1">{item.label}</span>
                         </button>
                       )
                     })}
                   </div>
 
-                  {/* Follow-up Drill-Down (Jika sudah ada gejala yang dicentang) */}
-                  {selectedSymptoms.length > 0 && (
-                    <div className="pt-2 border-t border-emerald-200/80 space-y-2.5">
-                      <div>
-                        <p className="text-[10px] font-semibold text-stone-600 mb-1">Durasi Keluhan:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {DURATION_OPTIONS.map((d) => (
-                            <button
-                              key={d.id}
-                              type="button"
-                              onClick={() => setSelectedDuration(d.id)}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition ${
-                                selectedDuration === d.id
-                                  ? "bg-teal-700 border-teal-800 text-white"
-                                  : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50"
-                              }`}
-                            >
-                              {d.label}
-                            </button>
-                          ))}
-                        </div>
+                  {/* Dynamic Follow-Up Single-Choice Radio */}
+                  {selectedSymptoms.length > 0 && activeSymptomWithFollowUp && (
+                    <div className="space-y-1.5 pt-2 border-t border-emerald-200/60 animate-in fade-in duration-200">
+                      <p className="text-[11px] font-semibold text-emerald-900 flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-emerald-700" />
+                        {activeSymptomWithFollowUp.followUpQuestion}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeSymptomWithFollowUp.followUpOptions?.map((opt, oIdx) => (
+                          <button
+                            key={oIdx}
+                            type="button"
+                            onClick={() => setSelectedFollowUp(opt)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition cursor-pointer ${
+                              selectedFollowUp === opt
+                                ? "bg-emerald-700 text-white border-emerald-700"
+                                : "bg-white text-stone-700 border-stone-200 hover:bg-stone-50"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
                       </div>
-
-                      <div>
-                        <p className="text-[10px] font-semibold text-stone-600 mb-1">Riwayat Pemeriksaan Terakhir:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {LAB_OPTIONS.map((l) => (
-                            <button
-                              key={l.id}
-                              type="button"
-                              onClick={() => setSelectedLab(l.id)}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition ${
-                                selectedLab === l.id
-                                  ? "bg-teal-700 border-teal-800 text-white"
-                                  : "bg-white border-stone-200 text-stone-600 hover:bg-stone-50"
-                              }`}
-                            >
-                              {l.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleSendSymptoms}
-                        className="w-full bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold py-2 rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 active:scale-98"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        <span>Kirim Keluhan Terpilih (Tanpa Ketik)</span>
-                      </button>
                     </div>
                   )}
+
+                  {/* Tombol Kirim Keluhan */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={selectedSymptoms.length === 0}
+                      onClick={handleSendSymptoms}
+                      className="flex-1 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold py-2 px-3 rounded-xl transition shadow-xs text-xs active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Kirim Keluhan Terpilih ({selectedSymptoms.length})</span>
+                      <Send className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSymptoms([])
+                        setSelectedFollowUp("")
+                        setIsTriageOpen(false)
+                      }}
+                      className="text-stone-500 hover:text-stone-700 text-xs px-2 py-1.5 cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Triage Trigger Pill & Quick Prompts Bar */}
-              <div className="px-3 py-2 bg-stone-100/90 border-t border-stone-200/80 overflow-x-auto flex items-center gap-1.5 no-scrollbar shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsTriageOpen(!isTriageOpen)}
-                  className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-[11px] font-bold flex items-center gap-1.5 transition active:scale-95 shrink-0 ${
-                    isTriageOpen
-                      ? "bg-emerald-800 text-white shadow-xs"
-                      : "bg-emerald-100 text-emerald-800 border border-emerald-300 hover:bg-emerald-200"
-                  }`}
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  <span>Cek Gejala (Checklist)</span>
-                  {isTriageOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
-                </button>
-
-                {messages.length <= 2 && !handedOff && (
-                  <>
-                    {QUICK_PROMPTS.map((qp, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleSendMessage(qp.text)}
-                        disabled={isTyping}
-                        className="whitespace-nowrap rounded-xl bg-white border border-stone-200/90 px-3 py-1.5 text-[11px] font-semibold text-stone-700 hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 transition active:scale-95 shrink-0"
-                      >
-                        {qp.label}
-                      </button>
-                    ))}
-                  </>
-                )}
-              </div>
-
-              {/* Input Bar */}
-              <div className="p-3 bg-white border-t border-stone-200 shrink-0">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <input
-                    type="text"
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder={handedOff ? "Tulis pesan untuk admin..." : "Ketik pesan Anda..."}
-                    disabled={isTyping}
-                    className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs text-stone-800 placeholder-stone-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
-                  />
+              {/* Quick Prompts Bar */}
+              {!isTriageOpen && (
+                <div className="px-3.5 py-2 border-t border-stone-100 bg-white flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
                   <button
-                    type="submit"
-                    disabled={!inputMessage.trim() || isTyping}
-                    className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-40 disabled:cursor-not-allowed transition shadow-xs active:scale-95"
-                    aria-label="Kirim Pesan"
+                    type="button"
+                    onClick={() => setIsTriageOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-bold shrink-0 transition active:scale-95 cursor-pointer border border-emerald-300"
                   >
-                    <Send className="h-4 w-4" />
+                    <Activity className="h-3 w-3 text-emerald-700" />
+                    <span>Cek Gejala Interaktif</span>
                   </button>
-                </form>
-                <p className="mt-1.5 text-center text-[10px] text-stone-400 flex items-center justify-center gap-1">
-                  <Info className="h-2.5 w-2.5" />
-                  Informasi edukasi, bukan pengganti saran medis dokter
-                </p>
-              </div>
+                  {QUICK_PROMPTS.map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSendMessage(p.text)}
+                      className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-medium shrink-0 transition cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Chat Input Bar */}
+              <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="p-3 border-t border-stone-200 bg-white flex items-center gap-2 shrink-0">
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Ketik keluhan atau pertanyaan Anda di sini..."
+                  className="flex-1 bg-stone-100 rounded-xl px-3.5 py-2.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600 focus:bg-white transition"
+                  disabled={isTyping}
+                />
+                <button
+                  type="submit"
+                  disabled={!inputMessage.trim() || isTyping}
+                  className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white p-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+                  title="Kirim Pesan"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </form>
             </>
           )}
         </div>
       )}
-    </>
+    </aside>
   )
 }

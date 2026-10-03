@@ -339,6 +339,33 @@ export const pgProductEmbeddings = pgTable("product_embeddings", {
   updatedAt: pgText("updated_at").notNull(),
 })
 
+export const pgChatbotSymptomOptions = pgTable("chatbot_symptom_options", {
+  id: pgText("id").primaryKey(),
+  label: pgText("label").notNull(),
+  category: pgText("category").notNull().default("umum"),
+  orderIndex: pgInteger("order_index").notNull().default(0),
+  isActive: pgBoolean("is_active").notNull().default(true),
+  followUpQuestion: pgText("follow_up_question"),
+  followUpOptions: pgText("follow_up_options"),
+  createdAt: pgText("created_at").notNull(),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
+export const pgChatbotConfig = pgTable("chatbot_config", {
+  id: pgText("id").primaryKey().default("default"),
+  pharmacistName: pgText("pharmacist_name").notNull().default("Apt. Siti Rahma, S.Farm"),
+  pharmacistTitle: pgText("pharmacist_title").notNull().default("Apoteker Pendamping Klinis"),
+  pharmacistAvatarUrl: pgText("pharmacist_avatar_url"),
+  pharmacistStatusText: pgText("pharmacist_status_text").notNull().default("Online • Siap Mendengarkan"),
+  leadNudgeEnabled: pgBoolean("lead_nudge_enabled").notNull().default(true),
+  leadNudgeTriggerMode: pgText("lead_nudge_trigger_mode").notNull().default("message_count"),
+  leadNudgeMessageCount: pgInteger("lead_nudge_message_count").notNull().default(3),
+  leadNudgeTimeMinutes: pgInteger("lead_nudge_time_minutes").notNull().default(2),
+  leadNudgeCooldownMinutes: pgInteger("lead_nudge_cooldown_minutes").notNull().default(10),
+  createdAt: pgText("created_at").notNull(),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
 export const sqliteChatSessions = sqliteTable("chat_sessions", {
   id: sqText("id").primaryKey(),
   status: sqText("status").notNull().default("ai"),
@@ -386,6 +413,33 @@ export const sqliteProductEmbeddings = sqliteTable("product_embeddings", {
   updatedAt: sqText("updated_at").notNull(),
 })
 
+export const sqliteChatbotSymptomOptions = sqliteTable("chatbot_symptom_options", {
+  id: sqText("id").primaryKey(),
+  label: sqText("label").notNull(),
+  category: sqText("category").notNull().default("umum"),
+  orderIndex: sqInteger("order_index").notNull().default(0),
+  isActive: sqInteger("is_active", { mode: "boolean" }).notNull().default(true as any),
+  followUpQuestion: sqText("follow_up_question"),
+  followUpOptions: sqText("follow_up_options"),
+  createdAt: sqText("created_at").notNull(),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
+export const sqliteChatbotConfig = sqliteTable("chatbot_config", {
+  id: sqText("id").primaryKey().default("default"),
+  pharmacistName: sqText("pharmacist_name").notNull().default("Apt. Siti Rahma, S.Farm"),
+  pharmacistTitle: sqText("pharmacist_title").notNull().default("Apoteker Pendamping Klinis"),
+  pharmacistAvatarUrl: sqText("pharmacist_avatar_url"),
+  pharmacistStatusText: sqText("pharmacist_status_text").notNull().default("Online • Siap Mendengarkan"),
+  leadNudgeEnabled: sqInteger("lead_nudge_enabled", { mode: "boolean" }).notNull().default(true as any),
+  leadNudgeTriggerMode: sqText("lead_nudge_trigger_mode").notNull().default("message_count"),
+  leadNudgeMessageCount: sqInteger("lead_nudge_message_count").notNull().default(3),
+  leadNudgeTimeMinutes: sqInteger("lead_nudge_time_minutes").notNull().default(2),
+  leadNudgeCooldownMinutes: sqInteger("lead_nudge_cooldown_minutes").notNull().default(10),
+  createdAt: sqText("created_at").notNull(),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
 // ─── Active Dual-Engine Exports ──────────────────────────
 export const roles: any = isPg ? pgRoles : sqliteRoles
 export const users: any = isPg ? pgUsers : sqliteUsers
@@ -400,6 +454,8 @@ export const chatSessions: any = isPg ? pgChatSessions : sqliteChatSessions
 export const chatMessages: any = isPg ? pgChatMessages : sqliteChatMessages
 export const chatbotWelcomeMessages: any = isPg ? pgChatbotWelcomeMessages : sqliteChatbotWelcomeMessages
 export const productEmbeddings: any = isPg ? pgProductEmbeddings : sqliteProductEmbeddings
+export const chatbotSymptomOptions: any = isPg ? pgChatbotSymptomOptions : sqliteChatbotSymptomOptions
+export const chatbotConfig: any = isPg ? pgChatbotConfig : sqliteChatbotConfig
 
 // ─── Type exports ────────────────────────────────────────
 export type Role = typeof pgRoles.$inferSelect
@@ -426,4 +482,9 @@ export type ChatbotWelcomeMessage = typeof pgChatbotWelcomeMessages.$inferSelect
 export type NewChatbotWelcomeMessage = typeof pgChatbotWelcomeMessages.$inferInsert
 export type ProductEmbedding = typeof pgProductEmbeddings.$inferSelect
 export type NewProductEmbedding = typeof pgProductEmbeddings.$inferInsert
+export type ChatbotSymptomOption = typeof pgChatbotSymptomOptions.$inferSelect
+export type NewChatbotSymptomOption = typeof pgChatbotSymptomOptions.$inferInsert
+export type ChatbotConfig = typeof pgChatbotConfig.$inferSelect
+export type NewChatbotConfig = typeof pgChatbotConfig.$inferInsert
+
 

@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { products, aiSettings, chatSessions, chatMessages } from '../../db/schema';
+import { products, aiSettings, chatSessions, chatMessages, chatbotConfig } from '../../db/schema';
 import { corsHeaders, errorResponse, successResponse } from './_shared/response';
 import { eq, asc } from 'drizzle-orm';
 
@@ -45,16 +45,28 @@ const FALLBACK_KNOWLEDGE: ProductItem[] = [
 ];
 
 // ─── Sistem prompt ───────────────────────────────────────
-const BASE_SYSTEM_PROMPT = `Anda adalah asisten kesehatan yang ramah di apotek herbal online (seluruh produk berizin BPOM). Bicaralah dalam Bahasa Indonesia yang hangat, sopan, dan santai seperti teman yang peduli. Jawaban singkat: maksimal 3-4 kalimat per giliran.
+const BASE_SYSTEM_PROMPT = `Anda adalah Apoteker Pendamping Klinis berlisensi di Apotek Herbal Medika (seluruh produk berizin resmi BPOM RI). Bicaralah dalam Bahasa Indonesia yang hangat, empatik, santun, dan profesional layaknya apoteker yang mendampingi pasien secara langsung. Jawaban ringkas dan nyaman dibaca: maksimal 3-5 kalimat per giliran.
 
-ATURAN PERCAKAPAN (WAJIB):
-1. Di awal percakapan: sapa dan tanyakan kabar atau keluhan pelanggan. JANGAN menyebut produk, harga, daftar penyakit, atau klaim BPOM di awal.
-2. Gali dulu keluhan: ajukan SATU atau DUA pertanyaan per giliran (sejak kapan, seberapa sering, pola makan, obat yang rutin diminum, hasil cek lab, usia, hamil/menyusui). Tanggapi jawaban pelanggan dengan empati sebelum bertanya lagi. Jangan seperti interogasi.
-3. JANGAN merekomendasikan produk sebelum (a) data cukup: keluhan + durasi + kondisi/obat yang sedang dikonsumsi, DAN (b) pelanggan setuju. Bila data sudah cukup, tawarkan dulu, misalnya: "Boleh saya berikan rekomendasi herbal yang sesuai?" lalu tunggu jawaban setuju.
-4. Setelah pelanggan setuju: rekomendasikan maksimal 3 produk DARI KATALOG saja, beri alasan singkat, aturan pakai, dan hal yang perlu diperhatikan. Akhiri jawaban dengan tag [[RECOMMEND:SKU1,SKU2]] memakai SKU persis dari katalog. Tag ini TIDAK BOLEH muncul sebelum pelanggan setuju.
-5. Anda bukan dokter: jangan mendiagnosis atau menjanjikan kesembuhan. Sarankan ke dokter bila gejala berat atau berlanjut.
-6. Serahkan ke admin manusia dengan menulis tag [[HANDOFF:alasan singkat]] bila: gejala darurat (nyeri dada, sesak napas, pingsan, lumpuh sebelah, bicara pelo), pelanggan hamil/menyusui atau untuk anak, interaksi dengan obat resep yang rumit, pertanyaan di luar katalog atau di luar topik kesehatan, komplain/pesanan/pembayaran, pelanggan meminta bicara dengan manusia, atau Anda tidak yakin. Beritahu pelanggan dengan ramah bahwa admin akan membantu.
-7. Jangan menulis tag lain selain [[RECOMMEND:...]] dan [[HANDOFF:...]]. Jangan memakai heading markdown; **tebal** boleh seperlunya.`;
+GUARDRAILS DOMAIN KESEHATAN (MUTLAK & STRIKTIF):
+- Jika pengguna menanyakan topik DI LUAR kesehatan manusia, gaya hidup sehat, atau farmasi herbal (contoh: coding/pemrograman, politik/pemilu, perbaikan mesin/kendaraan, resep masakan non-herbal, tugas sekolah, matematika, lelucon, dll.):
+  Anda WAJIB MENOLAK DENGAN SANTUN menggunakan template berikut:
+  "Mohon maaf, saya dirancang khusus untuk mendampingi konsultasi kesehatan herbal dan pola hidup sehat keluarga. Boleh ceritakan apakah ada keluhan fisik atau kondisi kesehatan yang sedang Anda rasakan?"
+  JANGAN PERNAH melayani atau menjawab obrolan non-kesehatan tersebut.
+
+PROTOKOL ANTI-INTEROGASI & 3-TURN WARM ASSESSMENT ENGINE:
+1. JANGAN PERNAH membuat pasien merasa diinterogasi dengan rentetan pertanyaan beruntun yang kaku.
+2. Setiap kali pasien menceritakan keluhan:
+   - SELALU berikan validasi empati hangat terlebih dahulu.
+   - Sertakan sedikit edukasi medis ringan / penjelasan fisiologis sederhana mengapa gejala tersebut bisa muncul (misal: leher kaku di pagi hari kerap berkaitan dengan sirkulasi darah yang kurang lancar atau ketegangan otot leher).
+   - Berikan tips gaya hidup praktis (misal: hidrasi air hangat, kompres hangat, kurangi makanan bersantan/jeroan).
+   - Ajukan HANYA SATU pertanyaan lanjutan ramah dan mengalir alami.
+3. ATURAN REKOMENDASI PRODUK (SANGAT KETAT):
+   - Turn 1 & Turn 2: DILARANG KERAS menyebutkan merk atau nama produk herbal katalog apapun! Fokus pada mendengarkan dan edukasi.
+   - Turn 3 (Setelah informasi cukup): Buat rangkuman singkat dari keluhan pasien, lalu MINTA IZIN DENGAN SOPAN:
+     "Melihat kondisi Kakak, kami memiliki rekomendasi ramuan herbal alami berizin resmi BPOM yang cocok untuk membantu keluhan tersebut. Boleh saya bagikan rekomendasi dan aturan minumnya?"
+   - Turn 4+ / Pasien Menyatakan Setuju (misal: "ya", "boleh", "silakan"): BARU berikan maksimal 2-3 rekomendasi produk DARI KATALOG dengan aturan pakai jelas, dan akhiri pesan dengan tag [[RECOMMEND:SKU1,SKU2]].
+4. Anda bukan dokter spesialis: jangan mendiagnosis penyakit kronis atau menjanjikan kesembuhan instan 100%.
+5. Serahkan ke admin apoteker manusia dengan tag [[HANDOFF:alasan singkat]] bila: gejala darurat mengancam nyawa (nyeri dada tembus punggung, sesak napas berat, pingsan, lumpuh separuh badan), pasien hamil/menyusui, atau pasien meminta berbicara langsung dengan manusia.`;
 
 // ─── Helper umum ─────────────────────────────────────────
 const nowIso = () => new Date().toISOString();
@@ -467,6 +479,36 @@ export default async (req: Request, context: Context) => {
     }
     if (catalog.length === 0) catalog = FALLBACK_KNOWLEDGE;
 
+    // Guardrail: Tolak pertanyaan non-kesehatan dengan sopan
+    const NON_HEALTH_RE = /\b(coding|program|javascript|python|html|css|sql|php|react|nextjs|politik|presiden|pemilu|partai|pilkada|dpr|bengkel|motor|mobil|karburator|oli mesin|ban bocor|resep masakan|resep kue|rendang|nasi goreng|masak ayam|matematika|fisika|tugas sekolah|pr matematika|lelucon|lawak|cerita lucu|tebak-tebakan)\b/i;
+    const HEALTH_KEYWORDS_RE = /\b(keluhan|sakit|nyeri|pusing|pegal|darah|tensi|gula|kolesterol|asam urat|urat|sendi|jantung|leher|tengkuk|kebas|kesemutan|herbal|obat|minum|kapsul|resep|sehat|tubuh|badan|gejala|mual|lambung|mag|gerd)\b/i;
+
+    if (NON_HEALTH_RE.test(query) && !HEALTH_KEYWORDS_RE.test(query)) {
+      const guardrailReply = 'Mohon maaf, saya dirancang khusus untuk mendampingi konsultasi kesehatan herbal dan pola hidup sehat keluarga. Boleh ceritakan apakah ada keluhan fisik atau kondisi kesehatan yang sedang Anda rasakan?';
+      await saveMessage('bot', guardrailReply, []);
+      return successResponse({
+        sessionId: session.id,
+        status: session.status,
+        stage: session.stage,
+        reply: guardrailReply,
+        handoff: false,
+        recommendedProducts: [],
+        activeProvider: aiConfig.provider,
+        activeModel: aiConfig.modelName,
+        usedFallback: false,
+      });
+    }
+
+    let pharmacistName = 'Apt. Siti Rahma, S.Farm';
+    let pharmacistTitle = 'Apoteker Pendamping Klinis';
+    try {
+      const cfgRows = await db.select().from(chatbotConfig).where(eq(chatbotConfig.id, 'default')).limit(1);
+      if (cfgRows && cfgRows.length > 0) {
+        if (cfgRows[0].pharmacistName) pharmacistName = cfgRows[0].pharmacistName;
+        if (cfgRows[0].pharmacistTitle) pharmacistTitle = cfgRows[0].pharmacistTitle;
+      }
+    } catch {}
+
     const history: any[] = await db
       .select()
       .from(chatMessages)
@@ -477,6 +519,16 @@ export default async (req: Request, context: Context) => {
       content: m.content
     }));
     const customerText = history.filter((m: any) => m.sender === 'customer').map((m: any) => m.content).join(' \n ');
+    const customerTurnsCount = history.filter((m: any) => m.sender === 'customer').length;
+
+    let turnGuidance = '';
+    if (customerTurnsCount <= 1) {
+      turnGuidance = '\n\nSTATUS GILIRAN: Putaran Awal (Turn 1). Berikan empati mendalam + mini-edukasi medis penyebab keluhan ini + ajukan 1 pertanyaan ramah penguat. DILARANG KERAS menyebutkan nama produk obat/herbal.';
+    } else if (customerTurnsCount === 2) {
+      turnGuidance = '\n\nSTATUS GILIRAN: Putaran Pendalaman (Turn 2). Berikan apresiasi + tips pola hidup praktis + tanyakan riwayat cek lab/tensi/gula. JANGAN merekomendasikan produk dulu.';
+    } else if (customerTurnsCount === 3 && session.stage !== 'consent_asked') {
+      turnGuidance = `\n\nSTATUS GILIRAN: Izin Rekomendasi (Turn 3). Rangkum keluhan pasien dan tanyakan izin kesediaan: "Melihat kondisi Kak ${session.customerName || ''}, ada ramuan herbal alami terstandar BPOM yang cocok. Boleh saya bagikan rekomendasi dan aturan minumnya?" Jangan sertakan tag [[RECOMMEND:...]] sebelum pasien setuju.`;
+    }
 
     // ── 6. Jawaban: AI dulu, heuristik sebagai cadangan ──
     let replyText = '';
@@ -489,9 +541,13 @@ export default async (req: Request, context: Context) => {
       ? `\n\nDATA PELANGGAN:\nNama Pelanggan: ${session.customerName}. Sapa dengan ramah menyebut "Kak ${session.customerName}".`
       : '';
 
+    const pharmacistContext = `\n\nIDENTITAS ANDA:\nNama Apoteker: ${pharmacistName}\nJabatan: ${pharmacistTitle}`;
+
     const system =
       `${BASE_SYSTEM_PROMPT}` +
+      pharmacistContext +
       customerContext +
+      turnGuidance +
       (aiConfig.systemPromptOverride.trim() ? `\n\nINSTRUKSI TAMBAHAN DARI ADMIN:\n${aiConfig.systemPromptOverride.trim()}` : '') +
       `\n\nKATALOG PRODUK (satu-satunya sumber rekomendasi):\n${buildCatalog(catalog)}`;
 
