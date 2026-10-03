@@ -19,6 +19,8 @@ import {
   Sparkles,
   ArrowRight,
   Loader2,
+  Store,
+  ExternalLink,
 } from "lucide-react"
 import type { Permission, Product } from "@/types"
 
@@ -30,7 +32,7 @@ interface NavItem {
 }
 
 const operationalItems: NavItem[] = [
-  { label: "Dashboard", href: "/", icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: "Kasir Transaksi", href: "/pos", icon: <ShoppingCart className="h-4 w-4" />, permission: "transactions:create" },
   { label: "Riwayat Struk", href: "/transactions", icon: <Receipt className="h-4 w-4" />, permission: "transactions:create" },
 ]
@@ -155,7 +157,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </button>
 
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/dashboard" className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#FF5A2B] text-white shadow-sm shadow-orange-600/30">
               <QrCode className="h-5 w-5" />
             </div>
@@ -326,6 +328,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Right: Telemetry Chips, Lang Switcher & User Avatar */}
         <div className="flex items-center gap-2.5">
+          {/* Quick link to Customer Portal */}
+          <Link
+            to="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="press-tactile hidden md:inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-3 py-1 text-xs font-bold text-[#181512] hover:bg-white shadow-2xs transition-colors"
+            title="Buka Halaman Pemesanan Mandiri Pembeli (Tab Baru)"
+          >
+            <Store className="h-3.5 w-3.5 text-[#FF5A2B]" />
+            <span>Katalog Pembeli</span>
+            <ExternalLink className="h-2.5 w-2.5 text-stone-400" />
+          </Link>
+
           {/* Quick Cashier POS CTA Pill (Jeruk AI Top-up CTA replica) */}
           <Link
             to="/pos"

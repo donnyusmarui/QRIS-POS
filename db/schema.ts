@@ -209,7 +209,7 @@ export const sqliteTransactions = sqliteTable("transactions", {
   customerId: sqText("customer_id").references(() => sqliteCustomers.id),
   totalAmount: sqReal("total_amount").notNull(),
   paymentMethod: sqText("payment_method", {
-    enum: ["cash", "qris", "transfer"],
+    enum: ["cash", "qris", "transfer", "gopay", "ewallet"],
   }).notNull(),
   qrisRefId: sqText("qris_ref_id"),
   status: sqText("status", {

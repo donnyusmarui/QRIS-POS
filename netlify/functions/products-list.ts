@@ -14,19 +14,24 @@ export default async (req: Request, context: Context) => {
     return errorResponse(405, 'Method Not Allowed');
   }
 
-  try {
-    await requirePermission(req, 'products:read');
-  } catch (error: any) {
-    return errorResponse(error.statusCode || 401, error.message || 'Unauthorized');
+  let isStaff = false;
+  if (req.headers.get('authorization')) {
+    try {
+      await requirePermission(req, 'products:read');
+      isStaff = true;
+    } catch {
+      // If invalid staff token, ignore and treat as public customer
+    }
   }
 
   try {
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const pageSize = parseInt(url.searchParams.get('pageSize') || '20', 10);
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '50', 10);
     const search = url.searchParams.get('search');
     const category = url.searchParams.get('category');
-    const showInactive = url.searchParams.get('showInactive') === 'true';
+    // Customers can only view active products
+    const showInactive = isStaff && url.searchParams.get('showInactive') === 'true';
 
     const db = createDb();
     const conditions = [];

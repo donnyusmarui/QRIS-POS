@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, Link } from "react-router"
 import { useAuthStore } from "@/stores/auth-store"
-import { QrCode, ArrowRight, Sparkles } from "lucide-react"
+import { QrCode, ArrowRight, Sparkles, Store } from "lucide-react"
 
 export function LoginPage() {
   const [email, setEmail] = useState("")
@@ -18,7 +18,7 @@ export function LoginPage() {
 
     try {
       await login(email, password)
-      navigate("/", { replace: true })
+      navigate("/dashboard", { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal")
     } finally {
@@ -41,6 +41,14 @@ export function LoginPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            className="press-tactile inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-3.5 py-1 text-xs font-bold text-[#181512] hover:bg-white shadow-2xs transition-colors"
+          >
+            <Store className="h-3.5 w-3.5 text-[#FF5A2B]" />
+            <span>Menu Pelanggan</span>
+          </Link>
+
           <div className="flex items-center rounded-full border border-black/10 bg-white/80 p-0.5 text-xs font-bold text-muted-foreground shadow-2xs backdrop-blur-xs">
             <span className="rounded-full bg-[#181512] px-2.5 py-0.5 text-[11px] text-white">ID</span>
             <span className="px-2.5 py-0.5 text-[11px] text-muted-foreground">EN</span>

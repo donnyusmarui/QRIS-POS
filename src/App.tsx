@@ -14,15 +14,22 @@ import { InventoryPage } from "@/features/inventory/InventoryPage"
 import { CustomersPage } from "@/features/customers/CustomersPage"
 import { ReportsPage } from "@/features/reports/ReportsPage"
 
+import { CustomerPortalPage } from "@/features/customer/CustomerPortalPage"
+
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
+      {/* Public Customer Self-Ordering Portal */}
+      <Route path="/" element={<CustomerPortalPage />} />
+      <Route path="/order" element={<CustomerPortalPage />} />
+      <Route path="/menu" element={<CustomerPortalPage />} />
+
+      {/* Staff Login */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected (inside layout) */}
+      {/* Protected POS & Back-Office Staff Operations */}
       <Route
-        path="/"
+        path="/dashboard"
         element={
           <ProtectedRoute>
             <AppLayout>
@@ -133,7 +140,7 @@ function AppRoutes() {
 
               <div className="mt-6">
                 <Link
-                  to="/"
+                  to="/dashboard"
                   className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FF5A2B] px-4 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E5481B]"
                 >
                   <ArrowLeft className="h-4 w-4" />

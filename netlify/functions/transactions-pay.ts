@@ -19,10 +19,12 @@ export default async (req: Request, context: Context) => {
     return errorResponse(405, 'Method Not Allowed');
   }
 
-  try {
-    await requirePermission(req, 'transactions:create');
-  } catch (error: any) {
-    return errorResponse(error.statusCode || 401, error.message || 'Unauthorized');
+  if (req.headers.get('authorization')) {
+    try {
+      await requirePermission(req, 'transactions:create');
+    } catch {
+      // Optional: ignore for customer self-pay
+    }
   }
 
   try {
