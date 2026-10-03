@@ -67,6 +67,7 @@ export interface ProductFormData {
   stock: number
   category?: string
   imageUrl?: string
+  description?: string
 }
 
 // ─── Customer ────────────────────────────────────────────

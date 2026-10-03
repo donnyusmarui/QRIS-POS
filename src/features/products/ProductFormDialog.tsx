@@ -34,9 +34,11 @@ export function ProductFormDialog({
         price: product.price,
         stock: product.stock,
         category: product.category ?? "",
+        imageUrl: product.imageUrl ?? "",
+        description: product.description ?? "",
       })
     } else {
-      setForm({ name: "", sku: "", price: 0, stock: 0, category: "" })
+      setForm({ name: "", sku: "", price: 0, stock: 0, category: "", imageUrl: "", description: "" })
     }
     setError("")
   }, [product, open])
@@ -111,8 +113,24 @@ export function ProductFormDialog({
             label="Kategori"
             value={form.category ?? ""}
             onChange={(v) => setForm((f) => ({ ...f, category: v }))}
-            placeholder="Opsional"
+            placeholder="Contoh: Kolesterol & Jantung"
           />
+          <Field
+            label="URL Gambar"
+            value={form.imageUrl ?? ""}
+            onChange={(v) => setForm((f) => ({ ...f, imageUrl: v }))}
+            placeholder="https://images.unsplash.com/..."
+          />
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Khasiat &amp; No. BPOM</label>
+            <textarea
+              value={form.description ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="[POM TR xxxxxxxxx] Khasiat herbal dan aturan pakai..."
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <button

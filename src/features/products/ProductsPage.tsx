@@ -143,7 +143,14 @@ export function ProductsPage() {
             ) : (
               products.map((product) => (
                 <tr key={product.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3 font-medium">{product.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <div className="font-bold">{product.name}</div>
+                    {product.description && (
+                      <div className="text-[11px] text-muted-foreground line-clamp-1 max-w-sm mt-0.5 font-normal">
+                        {product.description}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{product.sku}</td>
                   <td className="px-4 py-3 text-right">{formatRupiah(product.price)}</td>
                   <td className="px-4 py-3 text-right">

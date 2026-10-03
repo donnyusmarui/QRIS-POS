@@ -5,12 +5,12 @@ import {
   Plus,
   Minus,
   Trash2,
-  UtensilsCrossed,
+  Store,
   ShoppingBag,
   ArrowRight,
   FileText,
   AlertCircle,
-  Coffee,
+  Leaf,
 } from "lucide-react"
 
 interface CustomerCartDrawerProps {
@@ -88,11 +88,11 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
           {cart.length === 0 ? (
             <div className="flex h-64 flex-col items-center justify-center text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF2ED] text-[#FF5A2B] mb-3">
-                <Coffee className="h-8 w-8" />
+                <Leaf className="h-8 w-8 text-emerald-600" />
               </div>
               <p className="text-base font-bold text-[#181512]">Keranjang Masih Kosong</p>
               <p className="text-xs text-[#78716C] max-w-xs mt-1">
-                Pilih menu favorit Anda dari katalog untuk memulai pemesanan.
+                Pilih resep herbal alami dari katalog untuk memulai pemesanan.
               </p>
             </div>
           ) : (
@@ -100,7 +100,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
               {/* Order Type Toggle */}
               <div className="rounded-2xl border border-[#EFECE6] bg-[#FDFBF7] p-3 space-y-3">
                 <label className="text-xs font-bold text-[#181512] uppercase tracking-wider block">
-                  Tipe Pesanan
+                  Metode Pengambilan
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -112,8 +112,8 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
                         : "bg-white text-[#78716C] border border-[#EFECE6] hover:bg-black/5"
                     }`}
                   >
-                    <UtensilsCrossed className="h-4 w-4" />
-                    <span>Makan di Tempat</span>
+                    <Store className="h-4 w-4" />
+                    <span>Ambil di Kasir/Meja</span>
                   </button>
 
                   <button
@@ -126,7 +126,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
                     }`}
                   >
                     <ShoppingBag className="h-4 w-4" />
-                    <span>Bawa Pulang</span>
+                    <span>Bawa Pulang / Kirim</span>
                   </button>
                 </div>
 
