@@ -86,7 +86,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   v2.0
                 </span>
               </div>
-              <span className="block text-[10px] font-bold text-[#8C5400]">Jeruk Design System</span>
             </div>
           </Link>
         </div>
@@ -106,12 +105,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Right: Telemetry Chips, Lang Switcher & User Avatar */}
         <div className="flex items-center gap-2.5">
-          {/* SQLite Offline Pulse Pill */}
-          <div className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-emerald-600/20 bg-emerald-500/15 px-3 py-1 text-[11px] font-bold text-emerald-800">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>SQLite Offline Aktif</span>
-          </div>
-
           {/* Quick Cashier POS CTA Pill (Jeruk AI Top-up CTA replica) */}
           <Link
             to="/pos"
@@ -220,7 +213,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Bottom Shelf: Warm Peach Card ("Shift Kasir Aktif" - Jeruk AI promo card replica) */}
           <div className="border-t border-[#EFECE6] p-3.5 space-y-3">
-            <div className="rounded-2xl border border-orange-200/70 bg-[#FFF6ED] p-3.5 shadow-2xs space-y-2">
+            <div className="rounded-2xl border border-orange-200/70 bg-[#FFF6ED] p-3 shadow-2xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-[11px] font-black text-[#FF5A2B]">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -228,9 +221,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
-              <p className="text-[11px] text-[#78716C] leading-snug text-pretty">
-                Database terhubung secara lokal. Seluruh transaksi tercatat otomatis.
-              </p>
               <Link
                 to="/pos"
                 className="press-tactile flex items-center justify-between rounded-xl bg-[#FF5A2B] px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-[#E5481B]"
