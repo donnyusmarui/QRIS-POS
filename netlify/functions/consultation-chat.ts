@@ -60,13 +60,19 @@ function stripThinking(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 }
 
-function parseTags(raw: string): { text: string; recommendSkus: string[]; handoff: string | null } {
+function parseTags(raw: string, userAllowsRecommendation: boolean = false): { text: string; recommendSkus: string[]; handoff: string | null } {
   let recommendSkus: string[] = [];
   let handoff: string | null = null;
 
   const rec = raw.match(/\[\[RECOMMEND:([^\]]*)\]\]/i);
   if (rec) {
     recommendSkus = rec[1].split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+  } else if (userAllowsRecommendation) {
+    // Fallback: bila model menuliskan SKU formal (misal HERB-KOL-001) tanpa pembungkus tag
+    const matches = raw.match(/\bHERB-[A-Z]{3}-\d{3}\b/gi);
+    if (matches) {
+      recommendSkus = Array.from(new Set(matches.map((s) => s.toUpperCase())));
+    }
   }
   const hand = raw.match(/\[\[HANDOFF(?::([^\]]*))?\]\]/i);
   if (hand) handoff = (hand[1] || 'Diminta AI').trim();
@@ -107,7 +113,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: convo.map((t) => ({ role: t.role === 'user' ? 'user' : 'model', parts: [{ text: t.content }] })),
-          generationConfig: { temperature: temp, maxOutputTokens: 700 }
+          generationConfig: { temperature: temp, maxOutputTokens: 1200 }
         })
       });
       if (!res.ok) {
@@ -123,7 +129,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: modelName, system, max_tokens: 700, temperature: temp, messages: convo })
+        body: JSON.stringify({ model: modelName, system, max_tokens: 1200, temperature: temp, messages: convo })
       });
       if (!res.ok) {
         console.warn(`Anthropic HTTP ${res.status}:`, (await res.text()).slice(0, 300));
@@ -153,7 +159,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
           model: modelName,
           temperature: temp,
           messages: [{ role: 'system', content: system }, ...convo],
-          max_tokens: 700
+          max_tokens: 1200
         })
       });
       if (!res.ok) {
@@ -457,8 +463,10 @@ export default async (req: Request, context: Context) => {
 
     const aiRaw = await callMultiModelAI(aiConfig, system, turns);
 
+    const userAllowsRecommendation = session.stage === 'consent_asked' || AFFIRM_RE.test(query);
+
     if (aiRaw) {
-      const parsed = parseTags(aiRaw);
+      const parsed = parseTags(aiRaw, userAllowsRecommendation);
       replyText = parsed.text;
       handoffReason = parsed.handoff;
       if (parsed.recommendSkus.length > 0 && !handoffReason) {
