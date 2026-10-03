@@ -110,6 +110,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(9000),
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: convo.map((t) => ({ role: t.role === 'user' ? 'user' : 'model', parts: [{ text: t.content }] })),
@@ -129,6 +130,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        signal: AbortSignal.timeout(9000),
         body: JSON.stringify({ model: modelName, system, max_tokens: 1200, temperature: temp, messages: convo })
       });
       if (!res.ok) {
@@ -155,6 +157,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       const res = await fetch(`${finalBase}/chat/completions`, {
         method: 'POST',
         headers,
+        signal: AbortSignal.timeout(9000),
         body: JSON.stringify({
           model: modelName,
           temperature: temp,
