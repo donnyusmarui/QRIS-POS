@@ -54,6 +54,7 @@ export interface Product {
   stock: number
   category: string | null
   imageUrl: string | null
+  description?: string | null
   isActive: boolean
   createdAt: string
   updatedAt: string

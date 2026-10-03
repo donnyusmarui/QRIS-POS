@@ -11,7 +11,8 @@ const createProductSchema = z.object({
   price: z.number().positive(),
   stock: z.number().min(0),
   category: z.string().optional(),
-  imageUrl: z.string().url().optional()
+  imageUrl: z.string().url().optional(),
+  description: z.string().optional()
 });
 
 export default async (req: Request, context: Context) => {
@@ -50,6 +51,7 @@ export default async (req: Request, context: Context) => {
       stock: data.stock,
       category: data.category,
       imageUrl: data.imageUrl,
+      description: data.description,
     };
     
     try {

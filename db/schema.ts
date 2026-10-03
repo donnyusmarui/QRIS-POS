@@ -74,6 +74,7 @@ export const pgProducts = pgTable("products", {
   stock: pgInteger("stock").notNull().default(0),
   category: pgText("category"),
   imageUrl: pgText("image_url"),
+  description: pgText("description"),
   isActive: pgBoolean("is_active").notNull().default(true),
   createdAt: pgTimestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
@@ -181,6 +182,7 @@ export const sqliteProducts = sqliteTable("products", {
   stock: sqInteger("stock").notNull().default(0),
   category: sqText("category"),
   imageUrl: sqText("image_url"),
+  description: sqText("description"),
   isActive: sqInteger("is_active", { mode: "boolean" }).notNull().default(true),
   createdAt: sqText("created_at")
     .notNull()

@@ -12,7 +12,8 @@ const updateProductSchema = z.object({
   price: z.number().positive().optional(),
   stock: z.number().min(0).optional(),
   category: z.string().optional(),
-  imageUrl: z.string().url().optional()
+  imageUrl: z.string().url().optional(),
+  description: z.string().optional()
 });
 
 export default async (req: Request, context: Context) => {
