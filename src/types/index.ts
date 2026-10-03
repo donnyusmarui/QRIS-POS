@@ -150,7 +150,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 }
 
 // ─── AI Gateway Settings ─────────────────────────────────
-export type AiProvider = "gemini" | "openai" | "anthropic" | "deepseek" | "groq" | "custom_ollama"
+export type AiProvider = "gemini" | "openai" | "anthropic" | "deepseek" | "groq" | "nvidia" | "custom_ollama" | "custom"
 
 export interface AiSettings {
   id: string

@@ -73,6 +73,20 @@ const PROVIDERS: ProviderOption[] = [
     description: "Mesin inferensi LPU berkecepatan 500+ token/detik untuk respon chat seketika.",
   },
   {
+    id: "nvidia",
+    name: "NVIDIA NIM",
+    badge: "Enterprise GPU",
+    models: [
+      "meta/llama-3.3-70b-instruct",
+      "meta/llama-3.1-8b-instruct",
+      "deepseek-ai/deepseek-r1",
+      "mistralai/mixtral-8x7b-instruct-v0.1",
+    ],
+    defaultModel: "meta/llama-3.3-70b-instruct",
+    defaultBaseUrl: "https://integrate.api.nvidia.com/v1",
+    description: "Inference enterprise mikroservis NVIDIA NIM terakselerasi GPU berkecepatan tinggi.",
+  },
+  {
     id: "custom_ollama",
     name: "Ollama / Local LLM",
     badge: "Offline / On-Prem",
@@ -80,6 +94,15 @@ const PROVIDERS: ProviderOption[] = [
     defaultModel: "mistral",
     defaultBaseUrl: "http://localhost:11434/v1",
     description: "Jalankan model AI di server lokal mandiri tanpa biaya langganan API cloud.",
+  },
+  {
+    id: "custom",
+    name: "Custom OpenAI Compatible",
+    badge: "Universal Endpoint",
+    models: ["custom"],
+    defaultModel: "",
+    defaultBaseUrl: "https://openrouter.ai/api/v1",
+    description: "Hubungkan ke endpoint OpenAI-compatible kustom manapun (OpenRouter, Together, LM Studio).",
   },
 ]
 
@@ -104,6 +127,7 @@ export function AiSettingsPage() {
     latencyMs?: number
   } | null>(null)
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>("")
+  const [saveErrorMsg, setSaveErrorMsg] = useState<string>("")
 
   // Fetch current setting
   useEffect(() => {
@@ -111,7 +135,7 @@ export function AiSettingsPage() {
       setIsLoading(true)
       try {
         const res = await apiFetch<AiSettings & { maskedApiKey?: string; hasKey?: boolean }>(
-          "/api/ai-settings-get"
+          "ai-settings-get"
         )
         if (res.data) {
           const s = res.data
@@ -135,19 +159,25 @@ export function AiSettingsPage() {
   // Handle provider switch
   const handleProviderSelect = (prov: ProviderOption) => {
     setProvider(prov.id)
-    setModelName(prov.defaultModel)
+    if (prov.id === "custom") {
+      setModelName("")
+    } else {
+      setModelName(prov.defaultModel)
+    }
     if (prov.defaultBaseUrl) {
       setBaseUrl(prov.defaultBaseUrl)
     } else {
       setBaseUrl("")
     }
     setTestResult(null)
+    setSaveErrorMsg("")
   }
 
   // Handle Test Connection
   const handleTestConnection = async () => {
     setIsTesting(true)
     setTestResult(null)
+    setSaveErrorMsg("")
     try {
       const res = await apiFetch<{
         ok: boolean
@@ -155,7 +185,7 @@ export function AiSettingsPage() {
         provider: string
         model: string
         message: string
-      }>("/api/ai-settings-test", {
+      }>("ai-settings-test", {
         method: "POST",
         body: JSON.stringify({
           provider,
@@ -188,8 +218,9 @@ export function AiSettingsPage() {
     e.preventDefault()
     setIsSaving(true)
     setSaveSuccessMsg("")
+    setSaveErrorMsg("")
     try {
-      const res = await apiFetch("/api/ai-settings-save", {
+      const res = await apiFetch("ai-settings-save", {
         method: "POST",
         body: JSON.stringify({
           provider,
@@ -213,9 +244,11 @@ export function AiSettingsPage() {
           setApiKey("")
         }
         setTimeout(() => setSaveSuccessMsg(""), 4000)
+      } else {
+        setSaveErrorMsg(res.error || "Gagal menyimpan konfigurasi.")
       }
     } catch (err: any) {
-      alert(err?.message || "Gagal menyimpan konfigurasi.")
+      setSaveErrorMsg(err?.message || "Gagal menyimpan konfigurasi.")
     } finally {
       setIsSaving(false)
     }
@@ -330,29 +363,42 @@ export function AiSettingsPage() {
                   Nama Model ({selectedProviderConfig.name})
                 </label>
                 <div className="flex gap-2">
-                  <select
-                    value={selectedProviderConfig.models.includes(modelName) ? modelName : "custom"}
-                    onChange={(e) => {
-                      if (e.target.value !== "custom") {
-                        setModelName(e.target.value)
-                      }
-                    }}
-                    className="rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs text-stone-900 font-medium focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
-                  >
-                    {selectedProviderConfig.models.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                    <option value="custom">Model Kustom Lainnya...</option>
-                  </select>
+                  {selectedProviderConfig.models.filter((m) => m !== "custom").length > 0 && (
+                    <select
+                      value={selectedProviderConfig.models.includes(modelName) ? modelName : "custom"}
+                      onChange={(e) => {
+                        if (e.target.value === "custom") {
+                          if (selectedProviderConfig.models.includes(modelName)) {
+                            setModelName("")
+                          }
+                        } else {
+                          setModelName(e.target.value)
+                        }
+                      }}
+                      className="rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs text-stone-900 font-medium focus:bg-white focus:border-emerald-600 focus:outline-hidden transition shrink-0 max-w-[200px]"
+                    >
+                      {selectedProviderConfig.models
+                        .filter((m) => m !== "custom")
+                        .map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      <option value="custom">Model Kustom Lainnya...</option>
+                    </select>
+                  )}
 
                   <input
                     type="text"
                     value={modelName}
                     onChange={(e) => setModelName(e.target.value)}
-                    placeholder="Contoh: gemini-2.0-flash"
-                    className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs text-stone-900 font-medium focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
+                    placeholder={
+                      provider === "nvidia"
+                        ? "cth: meta/llama-3.3-70b-instruct"
+                        : "Ketik nama model (cth: gpt-4o, mistral, dll)"
+                    }
+                    className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs font-mono text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
+                    required
                   />
                 </div>
                 <p className="text-[11px] text-stone-500">
@@ -551,6 +597,14 @@ export function AiSettingsPage() {
             <div className="rounded-2xl p-4 text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-900 flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
               <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
               <span>{saveSuccessMsg}</span>
+            </div>
+          )}
+
+          {/* ── SAVE ERROR BANNER ── */}
+          {saveErrorMsg && (
+            <div className="rounded-2xl p-4 text-xs font-bold border border-red-200 bg-red-50 text-red-900 flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
+              <XCircle className="h-5 w-5 text-red-600 shrink-0" />
+              <span>{saveErrorMsg}</span>
             </div>
           )}
         </form>

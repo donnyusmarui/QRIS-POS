@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 const saveSchema = z.object({
-  provider: z.enum(['gemini', 'openai', 'anthropic', 'deepseek', 'groq', 'custom_ollama']),
+  provider: z.enum(['gemini', 'openai', 'anthropic', 'deepseek', 'groq', 'nvidia', 'custom_ollama', 'custom']),
   modelName: z.string().min(1, 'Nama model wajib diisi'),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),

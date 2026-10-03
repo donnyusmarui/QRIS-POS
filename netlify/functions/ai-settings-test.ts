@@ -83,11 +83,12 @@ export default async (req: Request, context: Context) => {
       });
     }
 
-    // 2. OpenAI / DeepSeek / Groq / Ollama (OpenAI-compatible)
-    if (['openai', 'deepseek', 'groq', 'custom_ollama'].includes(provider)) {
+    // 2. OpenAI / DeepSeek / Groq / NVIDIA NIM / Custom / Ollama (OpenAI-compatible)
+    if (['openai', 'deepseek', 'groq', 'nvidia', 'custom', 'custom_ollama'].includes(provider)) {
       let defaultBase = 'https://api.openai.com/v1';
       if (provider === 'deepseek') defaultBase = 'https://api.deepseek.com/v1';
       if (provider === 'groq') defaultBase = 'https://api.groq.com/openai/v1';
+      if (provider === 'nvidia') defaultBase = 'https://integrate.api.nvidia.com/v1';
       if (provider === 'custom_ollama') defaultBase = 'http://localhost:11434/v1';
 
       const finalBase = (baseUrl && baseUrl.trim() !== '') ? baseUrl.trim().replace(/\/$/, '') : defaultBase;

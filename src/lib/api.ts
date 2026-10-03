@@ -15,15 +15,33 @@ async function apiFetch<T>(
     ...options.headers,
   }
 
-  const res = await fetch(`${API_BASE}/${endpoint}`, {
+  const cleanEndpoint = endpoint.replace(/^\/?(api\/)?/, "").replace(/^\/+/, "")
+  const url = `${API_BASE}/${cleanEndpoint}`
+
+  const res = await fetch(url, {
     ...options,
     headers,
   })
 
-  const data = await res.json()
+  const contentType = res.headers.get("content-type") || ""
+  let data: any
+
+  if (contentType.includes("application/json")) {
+    try {
+      data = await res.json()
+    } catch {
+      throw new ApiError("Respon server bukan JSON yang valid", res.status)
+    }
+  } else {
+    const text = await res.text()
+    if (!res.ok) {
+      throw new ApiError(`Server mengembalikan error (${res.status}): ${text.slice(0, 100)}`, res.status)
+    }
+    throw new ApiError(`Respon server tidak valid (${res.status}): endpoint tidak ditemukan atau mengembalikan HTML`, res.status)
+  }
 
   if (!res.ok) {
-    throw new ApiError(data.error || "Request failed", res.status)
+    throw new ApiError(data?.error || "Request failed", res.status)
   }
 
   return data as ApiResponse<T>
