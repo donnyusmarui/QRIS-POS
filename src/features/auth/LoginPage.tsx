@@ -80,6 +80,35 @@ export function LoginPage() {
             {isSubmitting ? "Memproses..." : "Masuk"}
           </button>
         </form>
+
+        {/* Quick Demo Fill Buttons */}
+        <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground space-y-2">
+          <p className="font-semibold text-foreground">💡 Akun Demo (Klik untuk isi cepat):</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("admin@test.com")
+                setPassword("Admin123!")
+              }}
+              className="rounded border bg-background p-2 text-left hover:border-primary transition"
+            >
+              <p className="font-bold text-foreground">admin@test.com</p>
+              <p className="text-[10px]">Pass: Admin123!</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("admin@qris-pos.local")
+                setPassword("Admin123!")
+              }}
+              className="rounded border bg-background p-2 text-left hover:border-primary transition"
+            >
+              <p className="font-bold text-foreground">admin@qris-pos.local</p>
+              <p className="text-[10px]">Pass: Admin123!</p>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
