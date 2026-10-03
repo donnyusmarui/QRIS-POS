@@ -152,17 +152,39 @@ async function main() {
   }
   console.log("  ✅ Default roles ready.")
 
-  console.log("👤 Creating default admin user...")
+  console.log("👤 Creating default accounts (Admin, Manager, Cashier)...")
   const hashedPassword = await bcryptjs.hash("Admin123!", 12)
+  
+  // 1. Admin
   await client.execute({
-    sql: `INSERT OR IGNORE INTO users (id, email, password, full_name) VALUES (?, ?, ?, ?);`,
-    args: ["user_admin_default", "admin@qris-pos.local", hashedPassword, "Administrator"],
+    sql: `INSERT OR REPLACE INTO users (id, email, password, full_name) VALUES (?, ?, ?, ?);`,
+    args: ["user_admin_test", "admin@test.com", hashedPassword, "Administrator"],
   })
   await client.execute({
-    sql: `INSERT OR IGNORE INTO user_roles (id, user_id, role_id) VALUES (?, ?, ?);`,
-    args: ["ur_admin_default", "user_admin_default", "role_admin"],
+    sql: `INSERT OR REPLACE INTO user_roles (id, user_id, role_id) VALUES (?, ?, ?);`,
+    args: ["ur_admin_test", "user_admin_test", "role_admin"],
   })
-  console.log("  ✅ Admin: admin@qris-pos.local / Admin123!")
+
+  // 2. Manager
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO users (id, email, password, full_name) VALUES (?, ?, ?, ?);`,
+    args: ["user_manager_test", "manager@test.com", hashedPassword, "Manajer Toko"],
+  })
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO user_roles (id, user_id, role_id) VALUES (?, ?, ?);`,
+    args: ["ur_manager_test", "user_manager_test", "role_manager"],
+  })
+
+  // 3. Cashier
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO users (id, email, password, full_name) VALUES (?, ?, ?, ?);`,
+    args: ["user_cashier_test", "cashier@test.com", hashedPassword, "Kasir Donny"],
+  })
+  await client.execute({
+    sql: `INSERT OR REPLACE INTO user_roles (id, user_id, role_id) VALUES (?, ?, ?);`,
+    args: ["ur_cashier_test", "user_cashier_test", "role_cashier"],
+  })
+  console.log("  ✅ Accounts ready: admin@test.com, manager@test.com, cashier@test.com (Pass: Admin123!)")
 
   console.log("📦 Seeding demo products...")
   for (const p of INITIAL_PRODUCTS) {

@@ -128,36 +128,63 @@ export function LoginPage() {
               </button>
             </form>
 
-            {/* Quick Demo Fill Compartments (Jeruk Warm Peach Style) */}
-            <div className="mt-6 rounded-2xl border border-amber-200/70 bg-[#FFFBF0] p-4 text-xs space-y-2">
+            {/* Quick Demo Fill Compartments (Jeruk Warm Peach Style for 3 Roles) */}
+            <div className="mt-6 rounded-2xl border border-amber-200/70 bg-[#FFFBF0] p-4 text-xs space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-[#8C5400] text-[11px] uppercase tracking-wider">
-                  💡 Akun Demo (Klik untuk Isi)
+                  💡 Akun Uji Coba Multi-Role (3 Aktor):
                 </span>
-                <span className="text-[10px] text-[#8C5400]/70 font-semibold">1-Klik Siap Uji</span>
+                <span className="text-[10px] text-[#8C5400]/80 font-bold bg-[#FFE972] px-2 py-0.5 rounded-full">
+                  Pass: Admin123!
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
+                {/* 1. Admin */}
                 <button
                   type="button"
                   onClick={() => {
                     setEmail("admin@test.com")
                     setPassword("Admin123!")
                   }}
-                  className="press-tactile rounded-xl border border-amber-200/80 bg-white p-2.5 text-left transition hover:border-[#FF5A2B] hover:shadow-2xs"
+                  className="press-tactile rounded-xl border border-amber-200/80 bg-white p-2 text-left transition hover:border-[#FF5A2B] hover:shadow-2xs group"
                 >
-                  <p className="font-bold text-[#181512] text-xs truncate">admin@test.com</p>
-                  <p className="text-[10px] text-muted-foreground font-mono">Admin123!</p>
+                  <span className="inline-block rounded bg-red-100 px-1 py-0.2 text-[9px] font-black text-red-700 uppercase">
+                    Admin
+                  </span>
+                  <p className="font-bold text-[#181512] text-[11px] truncate mt-1">admin@test.com</p>
+                  <p className="text-[9px] text-[#78716C]">Semua Akses</p>
                 </button>
+
+                {/* 2. Manager */}
                 <button
                   type="button"
                   onClick={() => {
-                    setEmail("admin@qris-pos.local")
+                    setEmail("manager@test.com")
                     setPassword("Admin123!")
                   }}
-                  className="press-tactile rounded-xl border border-amber-200/80 bg-white p-2.5 text-left transition hover:border-[#FF5A2B] hover:shadow-2xs"
+                  className="press-tactile rounded-xl border border-amber-200/80 bg-white p-2 text-left transition hover:border-[#FF5A2B] hover:shadow-2xs group"
                 >
-                  <p className="font-bold text-[#181512] text-xs truncate">admin@qris-pos...</p>
-                  <p className="text-[10px] text-muted-foreground font-mono">Admin123!</p>
+                  <span className="inline-block rounded bg-amber-100 px-1 py-0.2 text-[9px] font-black text-amber-800 uppercase">
+                    Manager
+                  </span>
+                  <p className="font-bold text-[#181512] text-[11px] truncate mt-1">manager@test.com</p>
+                  <p className="text-[9px] text-[#78716C]">Stok &amp; Laporan</p>
+                </button>
+
+                {/* 3. Cashier */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail("cashier@test.com")
+                    setPassword("Admin123!")
+                  }}
+                  className="press-tactile rounded-xl border border-amber-200/80 bg-white p-2 text-left transition hover:border-[#FF5A2B] hover:shadow-2xs group"
+                >
+                  <span className="inline-block rounded bg-emerald-100 px-1 py-0.2 text-[9px] font-black text-emerald-800 uppercase">
+                    Cashier
+                  </span>
+                  <p className="font-bold text-[#181512] text-[11px] truncate mt-1">cashier@test.com</p>
+                  <p className="text-[9px] text-[#78716C]">Kasir &amp; POS</p>
                 </button>
               </div>
             </div>
