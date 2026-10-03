@@ -21,6 +21,7 @@ import {
   Loader2,
   Store,
   ExternalLink,
+  Bot,
 } from "lucide-react"
 import type { Permission, Product } from "@/types"
 
@@ -42,6 +43,7 @@ const managementItems: NavItem[] = [
   { label: "Manajemen Stok", href: "/inventory", icon: <Warehouse className="h-4 w-4" />, permission: "inventory:manage" },
   { label: "Data Pelanggan", href: "/customers", icon: <Users className="h-4 w-4" />, permission: "customers:manage" },
   { label: "Laporan & Omzet", href: "/reports", icon: <BarChart3 className="h-4 w-4" />, permission: "reports:view" },
+  { label: "Konfigurasi AI", href: "/settings/ai", icon: <Bot className="h-4 w-4" />, permission: "settings:manage" },
 ]
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

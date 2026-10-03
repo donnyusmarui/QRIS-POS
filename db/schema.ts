@@ -140,6 +140,23 @@ export const pgInventoryLog = pgTable("inventory_log", {
     .defaultNow(),
 })
 
+export const pgAiSettings = pgTable("ai_settings", {
+  id: pgText("id").primaryKey(),
+  provider: pgText("provider").notNull().default("gemini"),
+  modelName: pgText("model_name").notNull().default("gemini-2.0-flash"),
+  apiKey: pgText("api_key"),
+  baseUrl: pgText("base_url"),
+  temperature: pgDouble("temperature").notNull().default(0.4),
+  systemPromptOverride: pgText("system_prompt_override"),
+  isActive: pgBoolean("is_active").notNull().default(true),
+  createdAt: pgTimestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: pgTimestamp("updated_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+})
+
 // ─── SQLite Tables (Turso / Local Fallback) ─────────────
 export const sqliteRoles = sqliteTable("roles", {
   id: sqText("id").primaryKey(),
@@ -254,6 +271,23 @@ export const sqliteInventoryLog = sqliteTable("inventory_log", {
     .default(sql`(datetime('now'))`),
 })
 
+export const sqliteAiSettings = sqliteTable("ai_settings", {
+  id: sqText("id").primaryKey(),
+  provider: sqText("provider").notNull().default("gemini"),
+  modelName: sqText("model_name").notNull().default("gemini-2.0-flash"),
+  apiKey: sqText("api_key"),
+  baseUrl: sqText("base_url"),
+  temperature: sqReal("temperature").notNull().default(0.4),
+  systemPromptOverride: sqText("system_prompt_override"),
+  isActive: sqInteger("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: sqText("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: sqText("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+})
+
 // ─── Active Dual-Engine Exports ──────────────────────────
 export const roles: any = isPg ? pgRoles : sqliteRoles
 export const users: any = isPg ? pgUsers : sqliteUsers
@@ -263,6 +297,7 @@ export const customers: any = isPg ? pgCustomers : sqliteCustomers
 export const transactions: any = isPg ? pgTransactions : sqliteTransactions
 export const transactionItems: any = isPg ? pgTransactionItems : sqliteTransactionItems
 export const inventoryLog: any = isPg ? pgInventoryLog : sqliteInventoryLog
+export const aiSettings: any = isPg ? pgAiSettings : sqliteAiSettings
 
 // ─── Type exports ────────────────────────────────────────
 export type Role = typeof pgRoles.$inferSelect
@@ -279,3 +314,6 @@ export type TransactionItem = typeof pgTransactionItems.$inferSelect
 export type NewTransactionItem = typeof pgTransactionItems.$inferInsert
 export type InventoryLogEntry = typeof pgInventoryLog.$inferSelect
 export type NewInventoryLogEntry = typeof pgInventoryLog.$inferInsert
+export type AiSettings = typeof pgAiSettings.$inferSelect
+export type NewAiSettings = typeof pgAiSettings.$inferInsert
+

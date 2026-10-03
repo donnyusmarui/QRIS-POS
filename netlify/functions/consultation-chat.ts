@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { products } from '../../db/schema';
+import { products, aiSettings } from '../../db/schema';
 import { corsHeaders, errorResponse, successResponse } from './_shared/response';
 import { eq } from 'drizzle-orm';
 
@@ -124,6 +124,106 @@ const FALLBACK_KNOWLEDGE: ProductItem[] = [
   }
 ];
 
+// Helper: Call Multi-Model AI API
+async function callMultiModelAI(
+  config: { provider: string; modelName: string; apiKey: string; baseUrl?: string; temperature: number; systemPromptOverride?: string },
+  userPrompt: string,
+  groundingContext: string
+): Promise<string | null> {
+  const { provider, modelName, apiKey, baseUrl, temperature, systemPromptOverride } = config;
+  if (!apiKey || apiKey.trim() === '') return null;
+
+  const systemInstruction = (systemPromptOverride && systemPromptOverride.trim().length > 0)
+    ? systemPromptOverride
+    : "Anda adalah Konsultan Herbal Medika & Asisten Belanja Apotek Sehat Indonesia terstandar BPOM RI. Tugas Anda menjawab keluhan pasien/pembeli dengan ramah, berempati, menjelaskan mekanisme patofisiologi secara ringkas dan mudah dipahami, serta merekomendasikan produk herbal BPOM yang relevan dari data yang tersedia. Sertakan tips pola makan/hidup sehat dan disclaimer medis ramah.";
+
+  const fullPrompt = `${systemInstruction}\n\n${groundingContext}\n\nPertanyaan/Keluhan Pasien: ${userPrompt}\n\nBerikan jawaban ramah dalam bahasa Indonesia yang terstruktur dengan format Markdown.`;
+
+  try {
+    // 1. Google Gemini
+    if (provider === 'gemini') {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: {
+            temperature: Math.max(0, Math.min(1, temperature || 0.4)),
+            maxOutputTokens: 1000
+          }
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const candidate = json.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (candidate) return candidate.trim();
+      }
+    }
+
+    // 2. OpenAI / DeepSeek / Groq / Ollama (OpenAI-compatible)
+    if (['openai', 'deepseek', 'groq', 'custom_ollama'].includes(provider)) {
+      let defaultBase = 'https://api.openai.com/v1';
+      if (provider === 'deepseek') defaultBase = 'https://api.deepseek.com/v1';
+      if (provider === 'groq') defaultBase = 'https://api.groq.com/openai/v1';
+      if (provider === 'custom_ollama') defaultBase = 'http://localhost:11434/v1';
+
+      const finalBase = (baseUrl && baseUrl.trim() !== '') ? baseUrl.trim().replace(/\/$/, '') : defaultBase;
+      const endpoint = `${finalBase}/chat/completions`;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: modelName,
+          temperature: Math.max(0, Math.min(1, temperature || 0.4)),
+          messages: [
+            { role: 'system', content: `${systemInstruction}\n\n${groundingContext}` },
+            { role: 'user', content: userPrompt }
+          ],
+          max_tokens: 1000
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const content = json.choices?.[0]?.message?.content;
+        if (content) return content.trim();
+      }
+    }
+
+    // 3. Anthropic Claude
+    if (provider === 'anthropic') {
+      const endpoint = 'https://api.anthropic.com/v1/messages';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: modelName,
+          system: `${systemInstruction}\n\n${groundingContext}`,
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: userPrompt }]
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const content = json.content?.[0]?.text;
+        if (content) return content.trim();
+      }
+    }
+  } catch (apiErr) {
+    console.warn(`External AI API call to ${provider} failed, falling back to heuristic engine:`, apiErr);
+  }
+
+  return null;
+}
+
 export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders() });
@@ -143,9 +243,22 @@ export default async (req: Request, context: Context) => {
 
     // 1. Fetch live active products from Neon DB
     let allProducts: ProductItem[] = [];
+    let aiConfig = {
+      provider: 'gemini',
+      modelName: 'gemini-2.0-flash',
+      apiKey: process.env.GEMINI_API_KEY || '',
+      baseUrl: '',
+      temperature: 0.4,
+      systemPromptOverride: ''
+    };
+
     try {
       const db = createDb();
-      const items = await db.select().from(products).where(eq(products.isActive, true));
+      const [items, aiRows] = await Promise.all([
+        db.select().from(products).where(eq(products.isActive, true)),
+        db.select().from(aiSettings).where(eq(aiSettings.isActive, true)).limit(1)
+      ]);
+
       if (items && items.length > 0) {
         allProducts = items.map((p: any) => ({
           id: p.id,
@@ -158,6 +271,17 @@ export default async (req: Request, context: Context) => {
           description: p.description
         }));
       }
+
+      if (aiRows && aiRows.length > 0) {
+        aiConfig = {
+          provider: aiRows[0].provider || 'gemini',
+          modelName: aiRows[0].modelName || 'gemini-2.0-flash',
+          apiKey: aiRows[0].apiKey || process.env.GEMINI_API_KEY || '',
+          baseUrl: aiRows[0].baseUrl || '',
+          temperature: Number(aiRows[0].temperature) || 0.4,
+          systemPromptOverride: aiRows[0].systemPromptOverride || ''
+        };
+      }
     } catch (dbErr) {
       console.warn('Database fetch warning, using fallback knowledge base:', dbErr);
     }
@@ -169,7 +293,6 @@ export default async (req: Request, context: Context) => {
     // 2. Pathology & Symptom Scoring Engine
     const lowerQ = query.toLowerCase();
 
-    // Pathology Keywords mapping
     const clusters = {
       kolesterol: {
         categoryName: 'Kolesterol & Jantung',
@@ -226,7 +349,6 @@ export default async (req: Request, context: Context) => {
       let score = 0;
       for (const kw of cluster.keywords) {
         if (lowerQ.includes(kw)) {
-          // Weight exact multi-word matches more
           score += kw.includes(' ') ? 3 : 1.5;
         }
       }
@@ -245,12 +367,10 @@ export default async (req: Request, context: Context) => {
       const pDesc = (p.description || '').toLowerCase();
       const pCat = (p.category || '').toLowerCase();
 
-      // Category match
       if (pCat.includes(matchedCluster.categoryName.toLowerCase())) {
         score += 5;
       }
 
-      // Keyword match from user query
       matchedCluster.keywords.forEach((kw) => {
         if (lowerQ.includes(kw)) {
           if (pName.includes(kw)) score += 4;
@@ -258,7 +378,6 @@ export default async (req: Request, context: Context) => {
         }
       });
 
-      // Direct matches from user query in product name or description
       const words = lowerQ.split(/\s+/).filter((w) => w.length > 3);
       words.forEach((w) => {
         if (pName.includes(w)) score += 3;
@@ -268,13 +387,9 @@ export default async (req: Request, context: Context) => {
       return { product: p, score };
     });
 
-    // Sort descending by score
     scoredProducts.sort((a, b) => b.score - a.score);
-
-    // Pick top 2-3 products
     let recommended = scoredProducts.slice(0, 3).map((sp) => sp.product);
 
-    // If query was very generic or greeting
     const isGreeting = ['halo', 'hai', 'siang', 'malam', 'pagi', 'assalamu', 'bisa bantu', 'konsultasi', 'menu', 'katalog'].some((g) =>
       lowerQ.includes(g)
     );
@@ -284,7 +399,6 @@ export default async (req: Request, context: Context) => {
 
     if (isGreeting && maxClusterScore < 2) {
       detectedCategory = 'Koleksi Terpopuler';
-      // Recommend one from each major category
       recommended = [
         allProducts.find((p) => p.sku === 'HERB-KOL-001') || allProducts[0],
         allProducts.find((p) => p.sku === 'HERB-KOA-001') || allProducts[1],
@@ -303,12 +417,36 @@ Saya adalah asisten kesehatan herbal resmi Anda. Seluruh produk kami telah **ter
 
 Silakan ceritakan keluhan, gejala yang Anda rasakan, atau hasil cek laboratorium terakhir Anda. Saya akan merekomendasikan formulasi herbal yang paling tepat dan aman!`;
     } else {
-      // Personalized Clinical Response
-      const productBulletList = recommended
-        .map((p, idx) => `**${idx + 1}. ${p.name}** (${p.category})\n   • *Khasiat & Legalitas:* ${p.description}\n   • *Harga:* Rp ${p.price.toLocaleString('id-ID')} (Stok: ${p.stock})`)
-        .join('\n\n');
+      // 3. Grounding Context for Multi-Model AI
+      const groundingContext = `
+INFORMASI PRODUK HERBAL TERSEDIA (BPOM RI):
+${recommended
+  .map(
+    (p, i) =>
+      `${i + 1}. [${p.sku}] ${p.name} (Kategori: ${p.category}) - Harga: Rp ${p.price.toLocaleString('id-ID')}
+   Khasiat & Legalitas: ${p.description}`
+  )
+  .join('\n\n')}
+`;
 
-      replyText = `Terima kasih telah berkonsultasi mengenai keluhan Anda 🌿
+      // Attempt Dynamic AI Generation if API key is present
+      let aiGeneratedText: string | null = null;
+      if (aiConfig.apiKey && aiConfig.apiKey.trim().length > 0) {
+        aiGeneratedText = await callMultiModelAI(aiConfig, query, groundingContext);
+      }
+
+      if (aiGeneratedText) {
+        replyText = aiGeneratedText;
+      } else {
+        // Built-in Clinical Heuristic Engine fallback
+        const productBulletList = recommended
+          .map(
+            (p, idx) =>
+              `**${idx + 1}. ${p.name}** (${p.category})\n   • *Khasiat & Legalitas:* ${p.description}\n   • *Harga:* Rp ${p.price.toLocaleString('id-ID')} (Stok: ${p.stock})`
+          )
+          .join('\n\n');
+
+        replyText = `Terima kasih telah berkonsultasi mengenai keluhan Anda 🌿
 
 ### 🩺 Analisis Medis & Mekanisme Herbal:
 ${matchedCluster.advice}
@@ -326,11 +464,14 @@ ${productBulletList}
 • **Aturan Konsumsi:** Beri jeda 1-2 jam jika Anda juga mengonsumsi obat resep dokter agar khasiat saling mendukung tanpa interaksi negatif.
 
 *Catatan: Asisten herbal ini memberikan rekomendasi suplemen alami berizin BPOM RI untuk gaya hidup sehat. Bila gejala berlanjut atau bersifat darurat, konsultasikan dengan dokter spesialis Anda.*`;
+      }
     }
 
     return successResponse({
       reply: replyText,
       detectedCategory,
+      activeProvider: aiConfig.provider,
+      activeModel: aiConfig.modelName,
       recommendedProducts: recommended
     });
   } catch (err: any) {

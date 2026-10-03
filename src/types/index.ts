@@ -148,3 +148,37 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     totalPages: number
   }
 }
+
+// ─── AI Gateway Settings ─────────────────────────────────
+export type AiProvider = "gemini" | "openai" | "anthropic" | "deepseek" | "groq" | "custom_ollama"
+
+export interface AiSettings {
+  id: string
+  provider: AiProvider
+  modelName: string
+  apiKey?: string | null
+  baseUrl?: string | null
+  temperature: number
+  systemPromptOverride?: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AiSettingsFormData {
+  provider: AiProvider
+  modelName: string
+  apiKey?: string
+  baseUrl?: string
+  temperature: number
+  systemPromptOverride?: string
+}
+
+export interface AiTestResponse {
+  ok: boolean
+  latencyMs: number
+  provider: string
+  model: string
+  message: string
+}
+

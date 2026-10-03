@@ -67,11 +67,11 @@ function HerbalDetailModal({
             <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
               {product.category || "Herbal Alami"}
             </span>
-            <h2 className="text-base sm:text-lg font-black text-[#181512] leading-snug">
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 leading-snug">
               {product.name}
             </h2>
             <p className="text-xs font-mono text-stone-400">SKU: {product.sku}</p>
-            <p className="text-lg font-black text-[#FF5A2B] tabular-nums">
+            <p className="text-lg font-bold text-[#FF5A2B] tabular-nums">
               {formatRupiah(product.price)}
             </p>
           </div>
@@ -204,7 +204,7 @@ function ProductCard({
 
           {/* Official Verification Badges */}
           <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-            <span className="rounded-full bg-emerald-600/95 backdrop-blur-xs px-2.5 py-0.5 text-[8.5px] font-black uppercase tracking-wider text-white shadow-sm flex items-center gap-1">
+            <span className="rounded-full bg-emerald-600/95 backdrop-blur-xs px-2.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white shadow-sm flex items-center gap-1">
               <ShieldCheck className="h-3 w-3" /> BPOM RI ✅
             </span>
             <span className={`rounded-full px-2 py-0.5 text-[8px] font-bold shadow-xs ${badge.bg}`}>
@@ -215,7 +215,7 @@ function ProductCard({
           {/* Stock Availability Pill */}
           <div className="absolute bottom-2.5 left-2.5 z-10">
             {isOutOfStock ? (
-              <span className="rounded-lg bg-red-600/90 backdrop-blur-xs px-2 py-0.5 text-[9px] font-black text-white uppercase tracking-wider shadow-xs">
+              <span className="rounded-lg bg-red-600/90 backdrop-blur-xs px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider shadow-xs">
                 Habis
               </span>
             ) : (
@@ -228,8 +228,8 @@ function ProductCard({
           {/* In-Cart Counter Indicator */}
           {inCartItem && (
             <div className="absolute top-2.5 right-2.5 z-10">
-              <span className="flex items-center gap-1 rounded-full bg-[#FF5A2B] px-2.5 py-0.5 text-[10px] font-black text-white shadow-md">
-                <Check className="h-3 w-3 stroke-[3]" />
+              <span className="flex items-center gap-1 rounded-full bg-[#FF5A2B] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-md">
+                <Check className="h-3 w-3 stroke-[2.5]" />
                 <span className="tabular-nums">{inCartItem.quantity}</span>
               </span>
             </div>
@@ -249,26 +249,26 @@ function ProductCard({
 
           <h3 
             onClick={() => onViewDetail(product)}
-            className="text-xs sm:text-sm font-bold text-[#181512] [text-wrap:balance] line-clamp-2 leading-snug group-hover:text-[#FF5A2B] transition-colors cursor-pointer"
+            className="text-xs sm:text-sm font-semibold text-stone-900 [text-wrap:balance] line-clamp-2 leading-snug group-hover:text-[#FF5A2B] transition-colors cursor-pointer"
           >
             {product.name}
           </h3>
 
           {/* Clinical description snippet */}
           {product.description && (
-            <p className="text-[11px] text-[#78716C] line-clamp-2 leading-relaxed">
+            <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed [text-wrap:pretty]">
               {product.description}
             </p>
           )}
 
           <div className="pt-1 flex items-center justify-between">
-            <p className="text-sm sm:text-base font-black text-[#FF5A2B] tabular-nums">
+            <p className="text-sm sm:text-base font-bold text-[#FF5A2B] tabular-nums">
               {formatRupiah(product.price)}
             </p>
             <button
               type="button"
               onClick={() => onViewDetail(product)}
-              className="text-[10px] font-bold text-[#78716C] hover:text-[#FF5A2B] inline-flex items-center gap-0.5 transition"
+              className="text-[10px] font-semibold text-stone-500 hover:text-[#FF5A2B] inline-flex items-center gap-0.5 transition"
             >
               <Info className="h-3 w-3" />
               <span>Detail</span>
@@ -508,33 +508,33 @@ export function CustomerPortalPage() {
                 <Leaf className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Resmi Terdaftar BPOM &amp; Bersertifikat Halal</span>
               </div>
-              <h1 className="text-2xl sm:text-4xl font-black text-[#181512] tracking-tight [text-wrap:balance]">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 tracking-tight [text-wrap:balance]">
                 Mitigasi Penyakit Degeneratif &amp; Kualitas Darah 🌿
               </h1>
-              <p className="text-xs sm:text-sm text-[#78716C] leading-relaxed [text-wrap:pretty]">
+              <p className="text-xs sm:text-sm text-stone-600 leading-relaxed [text-wrap:pretty]">
                 Pilihan suplemen fitofarmaka dan ekstrak herbal berkhasiat untuk terapi pendamping <b>Kolesterol Tinggi</b>, <b>Darah Kental</b>, <b>Asam Urat</b>, <b>Diabetes Tipe 2</b>, dan <b>Hipertensi</b>. Transaksi mudah dengan <b>QRIS Dinamis</b>, <b>Transfer Bank</b>, atau <b>GoPay</b>.
               </p>
             </div>
 
             {/* Quality Proof Badges */}
             <div className="flex flex-row lg:flex-col gap-3 shrink-0">
-              <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#EFECE6] p-3 text-xs font-bold text-[#181512] shadow-2xs">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#EFECE6] p-3 text-xs font-bold text-stone-900 shadow-2xs">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-[#181512]">100% BPOM RI</p>
-                  <p className="text-[10px] text-[#78716C] font-normal">Bebas Bahan Kimia Obat</p>
+                  <p className="text-xs font-bold text-stone-900">100% BPOM RI</p>
+                  <p className="text-[10px] text-stone-500 font-normal">Bebas Bahan Kimia Obat</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#EFECE6] p-3 text-xs font-bold text-[#181512] shadow-2xs">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#EFECE6] p-3 text-xs font-bold text-stone-900 shadow-2xs">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
                   <Star className="h-4 w-4 fill-amber-400 stroke-amber-500" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-[#181512]">⭐ 4.9 / 5.0</p>
-                  <p className="text-[10px] text-[#78716C] font-normal">Rating Konsumen Puas</p>
+                  <p className="text-xs font-bold text-stone-900">⭐ 4.9 / 5.0</p>
+                  <p className="text-[10px] text-stone-500 font-normal">Rating Konsumen Puas</p>
                 </div>
               </div>
             </div>

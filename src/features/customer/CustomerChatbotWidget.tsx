@@ -301,14 +301,14 @@ Silakan pilih topik cepat di bawah atau ceritakan keluhan Anda secara bebas!`,
                         {m.text.split("\n\n").map((paragraph, pIdx) => {
                           if (paragraph.startsWith("### ")) {
                             return (
-                              <h4 key={pIdx} className="font-extrabold text-stone-900 mt-2 text-[12px] flex items-center gap-1">
+                              <h4 key={pIdx} className="font-bold text-stone-900 mt-2 text-xs flex items-center gap-1 leading-snug">
                                 {paragraph.replace("### ", "")}
                               </h4>
                             )
                           }
                           if (paragraph.startsWith("• ")) {
                             return (
-                              <p key={pIdx} className="pl-2 font-medium text-stone-700">
+                              <p key={pIdx} className="pl-2 font-normal text-stone-700 leading-relaxed [text-wrap:pretty]">
                                 {paragraph}
                               </p>
                             )
@@ -316,11 +316,11 @@ Silakan pilih topik cepat di bawah atau ceritakan keluhan Anda secara bebas!`,
                           // Bold parser
                           const parts = paragraph.split(/(\*\*.*?\*\*)/g)
                           return (
-                            <p key={pIdx}>
+                            <p key={pIdx} className="font-normal text-stone-700 leading-relaxed [text-wrap:pretty]">
                               {parts.map((part, i) => {
                                 if (part.startsWith("**") && part.endsWith("**")) {
                                   return (
-                                    <strong key={i} className="font-bold text-stone-950">
+                                    <strong key={i} className="font-semibold text-stone-900">
                                       {part.slice(2, -2)}
                                     </strong>
                                   )
@@ -361,13 +361,13 @@ Silakan pilih topik cepat di bawah atau ceritakan keluhan Anda secara bebas!`,
                                     )}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-[11px] truncate text-stone-900">
+                                    <p className="font-semibold text-xs truncate text-stone-900">
                                       {p.name}
                                     </p>
-                                    <p className="text-[10px] text-emerald-700 font-semibold tabular-nums">
+                                    <p className="text-xs text-emerald-700 font-semibold tabular-nums">
                                       {formatRupiah(p.price)}
                                     </p>
-                                    <p className="text-[9px] text-stone-500 truncate">
+                                    <p className="text-[10px] text-stone-500 truncate">
                                       {p.sku} • {p.category}
                                     </p>
                                   </div>

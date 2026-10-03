@@ -144,28 +144,32 @@ export function ProductsPage() {
               products.map((product) => (
                 <tr key={product.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium">
-                    <div className="font-bold">{product.name}</div>
+                    <div className="font-semibold text-stone-900">{product.name}</div>
                     {product.description && (
-                      <div className="text-[11px] text-muted-foreground line-clamp-1 max-w-sm mt-0.5 font-normal">
+                      <div className="text-xs text-stone-500 line-clamp-1 max-w-md mt-0.5 font-normal leading-relaxed">
                         {product.description}
                       </div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{product.sku}</td>
-                  <td className="px-4 py-3 text-right">{formatRupiah(product.price)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 font-mono text-xs text-stone-500">{product.sku}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-stone-900 tabular-nums">
+                    {formatRupiah(product.price)}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">
                     <span
                       className={
                         product.stock <= 5
-                          ? "font-semibold text-destructive"
-                          : ""
+                          ? "font-semibold text-red-600"
+                          : "font-medium text-stone-700"
                       }
                     >
                       {product.stock}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {product.category ?? "—"}
+                  <td className="px-4 py-3 text-stone-600">
+                    <span className="inline-block text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                      {product.category ?? "—"}
+                    </span>
                   </td>
                   {(canWrite || canDelete) && (
                     <td className="px-4 py-3 text-right">

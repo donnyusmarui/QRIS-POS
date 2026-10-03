@@ -13,6 +13,7 @@ import { TransactionsHistoryPage } from "@/features/transactions/TransactionsHis
 import { InventoryPage } from "@/features/inventory/InventoryPage"
 import { CustomersPage } from "@/features/customers/CustomersPage"
 import { ReportsPage } from "@/features/reports/ReportsPage"
+import { AiSettingsPage } from "@/features/settings/AiSettingsPage"
 
 import { CustomerPortalPage } from "@/features/customer/CustomerPortalPage"
 
@@ -155,6 +156,18 @@ function AppRoutes() {
             <AppLayout>
               <RoleGuard permission="reports:view">
                 <ReportsPage />
+              </RoleGuard>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/ai"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <RoleGuard permission="settings:manage">
+                <AiSettingsPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>

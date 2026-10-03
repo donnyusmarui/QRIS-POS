@@ -67,11 +67,11 @@ export function DashboardPage() {
               <span>Dashboard Kasir</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#181512] text-balance">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 [text-wrap:balance]">
               Halo, {user?.fullName || "Kasir"} — siap transaksi{" "}
               <span className="text-[#FF5A2B] underline decoration-wavy decoration-[#FF5A2B]/40">sistematis</span> hari ini?
             </h1>
-            <p className="mt-2 max-w-xl text-xs sm:text-sm text-[#78716C] text-pretty">
+            <p className="mt-2 max-w-xl text-xs sm:text-sm text-stone-600 leading-relaxed [text-wrap:pretty]">
               Sistem kasir offline lokal aktif. Buka kasir untuk melayani pelanggan atau pantau rekapan transaksi QRIS.
             </p>
           </div>
@@ -133,18 +133,18 @@ export function DashboardPage() {
       {/* 2. TELEMETRY METRIC CHIPS ROW (Jeruk AI Telemetry Cards Replica) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Penjualan Hari Ini */}
-        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-jeruk transition-all hover:shadow-md">
+        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="flex items-center justify-between text-[#78716C]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Penjualan Hari Ini</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">Penjualan Hari Ini</span>
             <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 transition-transform group-hover:scale-105">
               <DollarSign className="h-4 w-4" />
             </div>
           </div>
-          <p className="font-numeric mt-2.5 text-2xl font-black tracking-tight text-[#181512]">
+          <p className="mt-2.5 text-xl sm:text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
             {isLoading ? "..." : formatRupiah(stats.todayRevenue)}
           </p>
           <div className="mt-2 flex items-center justify-between text-[11px]">
-            <span className="font-numeric text-[#78716C]">
+            <span className="text-stone-500 tabular-nums">
               {stats.todayTransactions} transaksi lunas
             </span>
             <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700 text-[10px]">
@@ -154,18 +154,18 @@ export function DashboardPage() {
         </div>
 
         {/* Card 2: Total Akumulasi Omzet */}
-        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-jeruk transition-all hover:shadow-md">
+        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="flex items-center justify-between text-[#78716C]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Total Akumulasi Omzet</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">Total Akumulasi Omzet</span>
             <div className="rounded-xl bg-[#FFF2ED] p-2 text-[#FF5A2B] transition-transform group-hover:scale-105">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
-          <p className="font-numeric mt-2.5 text-2xl font-black tracking-tight text-[#181512]">
+          <p className="mt-2.5 text-xl sm:text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
             {isLoading ? "..." : formatRupiah(stats.totalRevenue)}
           </p>
           <div className="mt-2 flex items-center justify-between text-[11px]">
-            <span className="font-numeric text-[#78716C]">
+            <span className="text-stone-500 tabular-nums">
               {stats.totalTransactions} total transaksi
             </span>
             <span className="inline-flex items-center rounded-full bg-orange-50 px-2 py-0.5 font-bold text-[#FF5A2B] text-[10px]">
@@ -175,20 +175,20 @@ export function DashboardPage() {
         </div>
 
         {/* Card 3: Katalog Produk Aktif */}
-        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-jeruk transition-all hover:shadow-md">
+        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="flex items-center justify-between text-[#78716C]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Katalog Produk Aktif</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">Katalog Produk Aktif</span>
             <div className="rounded-xl bg-blue-50 p-2 text-blue-600 transition-transform group-hover:scale-105">
               <Package className="h-4 w-4" />
             </div>
           </div>
-          <p className="font-numeric mt-2.5 text-2xl font-black tracking-tight text-[#181512]">
+          <p className="mt-2.5 text-xl sm:text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
             {isLoading ? "..." : `${stats.totalProducts} Item`}
           </p>
           <div className="mt-2 flex items-center justify-between text-[11px]">
             <Link
               to="/products"
-              className="press-tactile font-bold text-[#FF5A2B] hover:underline inline-flex items-center gap-1"
+              className="press-tactile font-semibold text-[#FF5A2B] hover:underline inline-flex items-center gap-1"
             >
               <span>Kelola inventaris</span>
               <ArrowRight className="h-3 w-3" />
@@ -200,14 +200,14 @@ export function DashboardPage() {
         </div>
 
         {/* Card 4: Pelanggan Terdaftar */}
-        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-jeruk transition-all hover:shadow-md">
+        <div className="group rounded-2xl border border-[#EFECE6] bg-white p-5 shadow-xs transition-all hover:shadow-md">
           <div className="flex items-center justify-between text-[#78716C]">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pelanggan Terdaftar</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">Pelanggan Terdaftar</span>
             <div className="rounded-xl bg-purple-50 p-2 text-purple-600 transition-transform group-hover:scale-105">
               <Users className="h-4 w-4" />
             </div>
           </div>
-          <p className="font-numeric mt-2.5 text-2xl font-black tracking-tight text-[#181512]">
+          <p className="mt-2.5 text-xl sm:text-2xl font-bold tracking-tight text-stone-900 tabular-nums">
             {isLoading ? "..." : `${stats.totalCustomers} Kontak`}
           </p>
           <div className="mt-2 flex items-center justify-between text-[11px]">
