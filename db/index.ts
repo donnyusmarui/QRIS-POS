@@ -1,8 +1,6 @@
 import "dotenv/config"
 import { Pool } from "@neondatabase/serverless"
 import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless"
-import { createClient } from "@libsql/client"
-import { drizzle as drizzleLibsql } from "drizzle-orm/libsql"
 import * as schema from "./schema"
 
 let poolInstance: Pool | null = null
@@ -21,12 +19,20 @@ export function createDb() {
     return drizzleNeon(poolInstance, { schema }) as any
   }
 
-  const url = process.env.TURSO_DATABASE_URL || "file:local.db"
-  const client = createClient({
-    url,
-    authToken: process.env.TURSO_AUTH_TOKEN || undefined,
-  })
-  return drizzleLibsql(client, { schema }) as any
+  // Fallback for local offline SQLite development
+  // Dynamically required to prevent serverless bundles from requiring native bindings
+  try {
+    const { createClient } = require("@libsql/client")
+    const { drizzle } = require("drizzle-orm/libsql")
+    const url = process.env.TURSO_DATABASE_URL || "file:local.db"
+    const client = createClient({
+      url,
+      authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+    })
+    return drizzle(client, { schema }) as any
+  } catch (err) {
+    throw new Error("Database configuration error: Neither DATABASE_URL nor local SQLite client could be initialized.")
+  }
 }
 
 export type Database = any

@@ -95,6 +95,6 @@ export default async (req: Request, context: Context) => {
     
   } catch (error) {
     console.error('Login error:', error);
-    return errorResponse(500, 'Internal server error');
+    return errorResponse(500, error?.message || String(error));
   }
 };
