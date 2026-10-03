@@ -110,10 +110,10 @@ export function CustomerReceiptModal({
             {items.map((item) => (
               <div key={item.product.id} className="flex justify-between items-center text-xs">
                 <span className="truncate pr-2">
-                  {item.quantity}x {item.product.name}
+                  <span className="font-bold tabular-nums">{item.quantity}x</span> {item.product.name}
                   {item.notes && <span className="block text-[10px] text-[#A8A29E] italic">Note: {item.notes}</span>}
                 </span>
-                <span className="font-medium text-[#181512] shrink-0">
+                <span className="font-bold text-[#181512] shrink-0 tabular-nums">
                   {formatRupiah(item.product.price * item.quantity)}
                 </span>
               </div>
@@ -123,7 +123,7 @@ export function CustomerReceiptModal({
           {/* Total Line */}
           <div className="border-t border-[#EFECE6] pt-2 flex justify-between font-black text-sm text-[#181512]">
             <span>Total Lunas</span>
-            <span className="text-[#FF5A2B]">{formatRupiah(totalAmount)}</span>
+            <span className="text-[#FF5A2B] tabular-nums">{formatRupiah(totalAmount)}</span>
           </div>
         </div>
 

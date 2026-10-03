@@ -200,7 +200,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
                           <h4 className="text-xs font-bold text-[#181512] truncate">
                             {item.product.name}
                           </h4>
-                          <p className="text-[11px] font-semibold text-[#FF5A2B] mt-0.5">
+                          <p className="text-[11px] font-bold text-[#FF5A2B] mt-0.5 tabular-nums">
                             {formatRupiah(item.product.price)}
                           </p>
                         </div>
@@ -287,7 +287,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
             <div className="space-y-1.5 text-xs">
               <div className="flex justify-between text-[#78716C]">
                 <span>Subtotal ({totalItems} item)</span>
-                <span className="font-semibold text-[#181512]">{formatRupiah(subtotal)}</span>
+                <span className="font-bold text-[#181512] tabular-nums">{formatRupiah(subtotal)}</span>
               </div>
               <div className="flex justify-between text-[#78716C]">
                 <span>Pajak &amp; Layanan</span>
@@ -295,7 +295,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
               </div>
               <div className="border-t border-[#EFECE6] pt-2 flex justify-between text-sm font-black text-[#181512]">
                 <span>Total Pembayaran</span>
-                <span className="text-base text-[#FF5A2B]">{formatRupiah(subtotal)}</span>
+                <span className="text-base text-[#FF5A2B] tabular-nums">{formatRupiah(subtotal)}</span>
               </div>
             </div>
 

@@ -134,7 +134,7 @@ export function CustomerPaymentModal({
           <div>
             <h3 className="text-base font-black text-[#181512]">Pilih Metode Pembayaran</h3>
             <p className="text-xs text-[#78716C]">
-              Total Tagihan: <span className="font-bold text-[#FF5A2B]">{formatRupiah(totalAmount)}</span>
+              Total Tagihan: <span className="font-bold text-[#FF5A2B] tabular-nums">{formatRupiah(totalAmount)}</span>
             </p>
           </div>
           <button
@@ -197,7 +197,7 @@ export function CustomerPaymentModal({
             <div className="text-center space-y-4">
               <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200/80 py-1.5 px-3 rounded-full mx-auto w-fit">
                 <Clock className="h-3.5 w-3.5" />
-                <span>Kedaluwarsa dalam {formatTime(timeLeft)}</span>
+                <span>Kedaluwarsa dalam <span className="tabular-nums">{formatTime(timeLeft)}</span></span>
               </div>
 
               {/* QR Image Box */}
