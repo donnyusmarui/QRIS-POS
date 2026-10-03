@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router"
 import { useAuthStore } from "@/stores/auth-store"
-import { QrCode, ArrowRight, ShieldCheck, Sparkles } from "lucide-react"
+import { QrCode, ArrowRight, Sparkles } from "lucide-react"
 
 export function LoginPage() {
   const [email, setEmail] = useState("")
@@ -28,7 +28,7 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen bg-[#FBF9F5] text-[#181512] flex flex-col justify-between selection:bg-[#FF5A2B]/20 selection:text-[#FF5A2B]">
-      {/* Top Sunlight Radiant Header (Jeruk AI Hero Header) */}
+      {/* Top Sunlight Radiant Header (Hero Header) */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-[#FFEAA0] via-[#FFF8D6]/60 to-transparent" />
       
       {/* Top Mini Brand Bar */}
@@ -37,12 +37,7 @@ export function LoginPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FF5A2B] text-white shadow-sm shadow-orange-500/25">
             <QrCode className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-black tracking-tight text-[#181512]">QRIS-POS</span>
-            <span className="rounded-full bg-[#FFE972] px-2 py-0.5 text-[10px] font-bold text-[#8C5400]">
-              Jeruk UI
-            </span>
-          </div>
+          <span className="text-lg font-black tracking-tight text-[#181512]">QRIS-POS</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -192,17 +187,8 @@ export function LoginPage() {
         </div>
       </main>
 
-      {/* Footer Trust Markers */}
-      <footer className="relative z-10 py-5 text-center text-xs text-[#78716C] flex items-center justify-center gap-4">
-        <span className="inline-flex items-center gap-1 font-medium">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-          Offline SQLite Database Ready
-        </span>
-        <span>•</span>
-        <span className="font-medium">QRIS Standar Nasional</span>
-        <span>•</span>
-        <span className="font-medium text-[#FF5A2B]">Jeruk Design System</span>
-      </footer>
+      {/* Footer */}
+      <footer className="relative z-10 py-5" />
     </div>
   )
 }
