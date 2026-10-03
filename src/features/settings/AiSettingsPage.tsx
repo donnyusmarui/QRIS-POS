@@ -3,8 +3,6 @@ import { apiFetch } from "@/lib/api"
 import type { AiProvider } from "@/types"
 import {
   Bot,
-  Key,
-  Sliders,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -13,13 +11,17 @@ import {
   Sparkles,
   Zap,
   Cpu,
-  Globe,
   Save,
-  HelpCircle,
   Pencil,
   Trash2,
   Plus,
   Power,
+  MessageSquare,
+  Database,
+  Search,
+  RefreshCw,
+  FileText,
+  Check,
 } from "lucide-react"
 
 interface SavedModel {
@@ -32,6 +34,15 @@ interface SavedModel {
   temperature: number
   systemPromptOverride: string
   isActive: boolean
+}
+
+interface WelcomeMessageItem {
+  id: string
+  title: string
+  content: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 interface ProviderOption {
@@ -100,93 +111,109 @@ const PROVIDERS: ProviderOption[] = [
     ],
     defaultModel: "meta/llama-3.3-70b-instruct",
     defaultBaseUrl: "https://integrate.api.nvidia.com/v1",
-    description: "Inference enterprise mikroservis NVIDIA NIM terakselerasi GPU berkecepatan tinggi.",
+    description: "Akselerasi microservice AI kelas enterprise di atas infrastruktur GPU NVIDIA.",
   },
   {
     id: "custom_ollama",
-    name: "Ollama / Local LLM",
-    badge: "Offline / On-Prem",
-    models: ["llama3", "mistral", "qwen2.5:7b", "custom"],
-    defaultModel: "mistral",
+    name: "Ollama (Lokal)",
+    badge: "100% Offline",
+    models: ["llama3.2", "mistral", "qwen2.5:7b", "deepseek-r1:8b"],
+    defaultModel: "llama3.2",
     defaultBaseUrl: "http://localhost:11434/v1",
-    description: "Jalankan model AI di server lokal mandiri tanpa biaya langganan API cloud.",
+    description: "Jalankan model open source di komputer/server lokal tanpa mengirim data ke cloud.",
   },
   {
     id: "custom",
-    name: "Custom OpenAI Compatible",
-    badge: "Universal Endpoint",
-    models: ["custom"],
+    name: "Kustom / Lainnya",
+    badge: "Fleksibel",
+    models: [],
     defaultModel: "",
-    defaultBaseUrl: "https://openrouter.ai/api/v1",
-    description: "Hubungkan ke endpoint OpenAI-compatible kustom manapun (OpenRouter, Together, LM Studio).",
+    defaultBaseUrl: "",
+    description: "Gunakan endpoint OpenAI-compatible apa pun (vLLM, LM Studio, LiteLLM, dll.).",
   },
 ]
 
 export function AiSettingsPage() {
-  const [provider, setProvider] = useState<AiProvider>("gemini")
-  const [modelName, setModelName] = useState<string>("gemini-2.0-flash")
-  const [apiKey, setApiKey] = useState<string>("")
-  const [maskedApiKey, setMaskedApiKey] = useState<string>("")
-  const [hasKey, setHasKey] = useState<boolean>(false)
-  const [baseUrl, setBaseUrl] = useState<string>("")
-  const [temperature, setTemperature] = useState<number>(0.4)
-  const [systemPromptOverride, setSystemPromptOverride] = useState<string>("")
-  const [showKey, setShowKey] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<"models" | "welcome" | "rag">("models")
 
-  // Status state
-  const [isLoading, setIsLoading] = useState<boolean>(true)
-  const [isSaving, setIsSaving] = useState<boolean>(false)
-  const [isTesting, setIsTesting] = useState<boolean>(false)
-  const [testResult, setTestResult] = useState<{
-    ok: boolean
-    message: string
-    latencyMs?: number
-  } | null>(null)
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>("")
-  const [saveErrorMsg, setSaveErrorMsg] = useState<string>("")
-
-  // Daftar model tersimpan + mode form (null = tambah baru, id = edit)
-  const [models, setModels] = useState<SavedModel[]>([])
+  // ── STATE: TAB 1 (MODELS) ──
+  const [savedModels, setSavedModels] = useState<SavedModel[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [provider, setProvider] = useState<AiProvider>("gemini")
+  const [modelName, setModelName] = useState("gemini-2.0-flash")
+  const [apiKey, setApiKey] = useState("")
+  const [baseUrl, setBaseUrl] = useState("")
+  const [temperature, setTemperature] = useState(0.4)
+  const [systemPromptOverride, setSystemPromptOverride] = useState("")
+  const [isActive, setIsActive] = useState(true)
+
+  const [showKey, setShowKey] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string; latencyMs?: number } | null>(null)
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState("")
+  const [saveErrorMsg, setSaveErrorMsg] = useState("")
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  // ── STATE: TAB 2 (WELCOME MESSAGES) ──
+  const [welcomeList, setWelcomeList] = useState<WelcomeMessageItem[]>([])
+  const [isLoadingWelcome, setIsLoadingWelcome] = useState(false)
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [aiWelcomeSuggestions, setAiWelcomeSuggestions] = useState<Array<{ title: string; content: string }>>([])
+  const [editingWelcomeId, setEditingWelcomeId] = useState<string | null>(null)
+  const [welcomeFormTitle, setWelcomeFormTitle] = useState("")
+  const [welcomeFormContent, setWelcomeFormContent] = useState("")
+  const [welcomeFormActive, setWelcomeFormActive] = useState(false)
+  const [welcomeSuccess, setWelcomeSuccess] = useState("")
+  const [welcomeError, setWelcomeError] = useState("")
+
+  // ── STATE: TAB 3 (CUSTOM RAG & VECTOR DB) ──
+  const [isReindexing, setIsReindexing] = useState(false)
+  const [reindexSuccess, setReindexSuccess] = useState("")
+  const [reindexError, setReindexError] = useState("")
+  const [ragQuery, setRagQuery] = useState("tengkuk tegang dan kolesterol")
+  const [isSearchingRag, setIsSearchingRag] = useState(false)
+  const [ragResults, setRagResults] = useState<any[]>([])
+
+  // Load models on init
+  const loadModels = async (): Promise<SavedModel[]> => {
+    const res = await apiFetch<SavedModel[]>("ai-settings-list")
+    if (res.data) {
+      setSavedModels(res.data)
+      return res.data
+    }
+    return []
+  }
 
   const fillForm = (m: SavedModel) => {
     setProvider(m.provider)
     setModelName(m.modelName)
-    setApiKey("")
-    setMaskedApiKey(m.maskedApiKey)
-    setHasKey(m.hasKey)
-    setBaseUrl(m.baseUrl)
-    setTemperature(m.temperature)
-    setSystemPromptOverride(m.systemPromptOverride)
+    setApiKey(m.maskedApiKey || "")
+    setBaseUrl(m.baseUrl || "")
+    setTemperature(m.temperature ?? 0.4)
+    setSystemPromptOverride(m.systemPromptOverride || "")
+    setIsActive(m.isActive)
     setTestResult(null)
     setSaveErrorMsg("")
   }
 
   const resetForm = () => {
     setEditingId(null)
-    setProvider("gemini")
-    setModelName("gemini-2.0-flash")
+    const p = PROVIDERS[0]
+    setProvider(p.id)
+    setModelName(p.defaultModel)
     setApiKey("")
-    setMaskedApiKey("")
-    setHasKey(false)
     setBaseUrl("")
     setTemperature(0.4)
     setSystemPromptOverride("")
+    setIsActive(savedModels.length === 0)
     setTestResult(null)
     setSaveErrorMsg("")
   }
 
-  const loadModels = async (): Promise<SavedModel[]> => {
-    const res = await apiFetch<SavedModel[]>("ai-settings-list")
-    const list = res.data || []
-    setModels(list)
-    return list
-  }
-
-  // Muat daftar model; form langsung berisi model yang sedang aktif
   useEffect(() => {
-    async function init() {
+    const init = async () => {
       setIsLoading(true)
       try {
         const list = await loadModels()
@@ -203,9 +230,143 @@ export function AiSettingsPage() {
       }
     }
     init()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── WELCOME MESSAGES CRUD ──
+  const loadWelcomeMessages = async () => {
+    setIsLoadingWelcome(true)
+    try {
+      const res = await apiFetch<WelcomeMessageItem[]>("welcome-message-manage")
+      if (res.data) setWelcomeList(res.data)
+    } catch (err: any) {
+      console.error("Gagal memuat sapaan:", err)
+    } finally {
+      setIsLoadingWelcome(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "welcome") {
+      loadWelcomeMessages()
+    }
+  }, [activeTab])
+
+  const handleSaveWelcome = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!welcomeFormTitle.trim() || !welcomeFormContent.trim()) return
+    setWelcomeSuccess("")
+    setWelcomeError("")
+    try {
+      await apiFetch("welcome-message-manage", {
+        method: "POST",
+        body: JSON.stringify({
+          action: editingWelcomeId ? "update" : "create",
+          id: editingWelcomeId || undefined,
+          title: welcomeFormTitle.trim(),
+          content: welcomeFormContent.trim(),
+          isActive: welcomeFormActive,
+        }),
+      })
+      setWelcomeSuccess(editingWelcomeId ? "Sapaan berhasil diperbarui." : "Sapaan baru berhasil ditambahkan.")
+      setEditingWelcomeId(null)
+      setWelcomeFormTitle("")
+      setWelcomeFormContent("")
+      setWelcomeFormActive(false)
+      await loadWelcomeMessages()
+      setTimeout(() => setWelcomeSuccess(""), 3000)
+    } catch (err: any) {
+      setWelcomeError(err.message || "Gagal menyimpan sapaan")
+    }
+  }
+
+  const handleActivateWelcome = async (id: string) => {
+    try {
+      await apiFetch("welcome-message-manage", {
+        method: "POST",
+        body: JSON.stringify({ action: "activate", id }),
+      })
+      setWelcomeSuccess("Sapaan aktif berhasil diperbarui.")
+      await loadWelcomeMessages()
+      setTimeout(() => setWelcomeSuccess(""), 3000)
+    } catch (err: any) {
+      setWelcomeError(err.message || "Gagal mengaktifkan sapaan")
+    }
+  }
+
+  const handleDeleteWelcome = async (id: string) => {
+    if (!window.confirm("Hapus pesan sapaan ini?")) return
+    try {
+      await apiFetch("welcome-message-manage", {
+        method: "POST",
+        body: JSON.stringify({ action: "delete", id }),
+      })
+      setWelcomeSuccess("Sapaan berhasil dihapus.")
+      await loadWelcomeMessages()
+      setTimeout(() => setWelcomeSuccess(""), 3000)
+    } catch (err: any) {
+      setWelcomeError(err.message || "Gagal menghapus sapaan")
+    }
+  }
+
+  const handleGenerateAiSuggestions = async () => {
+    setIsGeneratingAi(true)
+    setWelcomeError("")
+    try {
+      const res = await apiFetch<Array<{ title: string; content: string }>>("welcome-message-manage", {
+        method: "POST",
+        body: JSON.stringify({ action: "generate_ai" }),
+      })
+      if (res.data) {
+        setAiWelcomeSuggestions(res.data)
+      }
+    } catch (err: any) {
+      setWelcomeError(err.message || "Gagal meminta rekomendasi AI")
+    } finally {
+      setIsGeneratingAi(false)
+    }
+  }
+
+  // ── RAG REINDEX & SEARCH ──
+  const handleReindexRag = async () => {
+    setIsReindexing(true)
+    setReindexSuccess("")
+    setReindexError("")
+    try {
+      const res = await apiFetch<any>("rag-reindex", { method: "POST" })
+      if (res.data) {
+        setReindexSuccess(
+          `Sukses mengindeks ${res.data.indexedCount} produk (${res.data.vectorDimensions} dimensi via ${res.data.embeddingProvider})!`
+        )
+      }
+    } catch (err: any) {
+      setReindexError(err.message || "Gagal melakukan re-index vektor")
+    } finally {
+      setIsReindexing(false)
+    }
+  }
+
+  const handleTestRagSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!ragQuery.trim()) return
+    setIsSearchingRag(true)
+    try {
+      const res = await fetch("/api/rag-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ query: ragQuery.trim(), topK: 3 }),
+      })
+      const json = await res.json()
+      if (json.success && json.data?.results) {
+        setRagResults(json.data.results)
+      }
+    } catch (err: any) {
+      console.error("RAG search test error:", err)
+    } finally {
+      setIsSearchingRag(false)
+    }
+  }
+
+  // Handle Model Activation
   const handleActivate = async (id: string) => {
     setBusyId(id)
     setSaveErrorMsg("")
@@ -246,7 +407,6 @@ export function AiSettingsPage() {
     }
   }
 
-  // Handle provider switch
   const handleProviderSelect = (prov: ProviderOption) => {
     setProvider(prov.id)
     if (prov.id === "custom") {
@@ -260,428 +420,722 @@ export function AiSettingsPage() {
       setBaseUrl("")
     }
     setTestResult(null)
-    setSaveErrorMsg("")
   }
 
-  // Handle Test Connection
   const handleTestConnection = async () => {
     setIsTesting(true)
     setTestResult(null)
     setSaveErrorMsg("")
     try {
-      const res = await apiFetch<{
-        ok: boolean
-        latencyMs: number
-        provider: string
-        model: string
-        message: string
-      }>("ai-settings-test", {
+      const res = await apiFetch<{ ok: boolean; message: string; latencyMs?: number }>("ai-settings-test", {
         method: "POST",
         body: JSON.stringify({
-          ...(editingId ? { id: editingId } : {}),
+          id: editingId || undefined,
           provider,
           modelName,
-          apiKey: apiKey || (hasKey ? maskedApiKey : ""),
+          apiKey,
           baseUrl,
         }),
       })
-
-      if (res.data) {
-        setTestResult(res.data)
-      } else {
-        setTestResult({
-          ok: false,
-          message: res.error || "Gagal melakukan uji koneksi.",
-        })
-      }
+      if (res.data) setTestResult(res.data)
     } catch (err: any) {
       setTestResult({
         ok: false,
-        message: err?.message || "Koneksi gagal atau waktu habis.",
+        message: err.message || "Gagal melakukan uji koneksi.",
       })
     } finally {
       setIsTesting(false)
     }
   }
 
-  // Handle Save (tambah baru bila editingId null, edit bila terisi)
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
     setSaveSuccessMsg("")
     setSaveErrorMsg("")
     try {
-      const isNew = editingId === null
+      const payload: Record<string, any> = {
+        id: editingId || undefined,
+        provider,
+        modelName,
+        baseUrl,
+        temperature,
+        systemPromptOverride,
+        isActive,
+      }
+      if (apiKey && !apiKey.includes("••••")) {
+        payload.apiKey = apiKey
+      }
       const res = await apiFetch<{ id: string }>("ai-settings-save", {
         method: "POST",
-        body: JSON.stringify({
-          ...(editingId ? { id: editingId } : {}),
-          provider,
-          modelName: modelName.trim(),
-          apiKey: apiKey.trim(),
-          baseUrl: baseUrl.trim(),
-          temperature,
-          systemPromptOverride: systemPromptOverride.trim(),
-        }),
+        body: JSON.stringify(payload),
       })
-
-      if (res.success) {
-        const list = await loadModels()
-        const savedId = res.data?.id || editingId
+      setSaveSuccessMsg(editingId ? "Perubahan model berhasil disimpan!" : "Model baru berhasil ditambahkan!")
+      const list = await loadModels()
+      const savedId = res.data?.id
+      if (savedId) {
+        setEditingId(savedId)
         const saved = list.find((m) => m.id === savedId)
-        if (saved) {
-          setEditingId(saved.id)
-          fillForm(saved)
-        }
-        setSaveSuccessMsg(isNew ? "Model baru berhasil ditambahkan!" : "Perubahan model berhasil disimpan!")
-        setTimeout(() => setSaveSuccessMsg(""), 4000)
-      } else {
-        setSaveErrorMsg(res.error || "Gagal menyimpan konfigurasi.")
+        if (saved) fillForm(saved)
       }
+      setTimeout(() => setSaveSuccessMsg(""), 3500)
     } catch (err: any) {
-      setSaveErrorMsg(err?.message || "Gagal menyimpan konfigurasi.")
+      setSaveErrorMsg(err.message || "Gagal menyimpan konfigurasi.")
     } finally {
       setIsSaving(false)
     }
   }
 
-  const selectedProviderConfig = PROVIDERS.find((p) => p.id === provider) || PROVIDERS[0]
+  const activeSavedModel = savedModels.find((m) => m.isActive)
+  const currentProviderConfig = PROVIDERS.find((p) => p.id === provider) || PROVIDERS[0]
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6">
       {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EFECE6] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-              <Bot className="h-5 w-5" />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
-              Konfigurasi Multi-Model AI Gateway
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 flex items-center gap-2">
+              <Bot className="h-6 w-6 text-emerald-700" />
+              Pusat Pengaturan AI &amp; Chatbot
             </h1>
+            {activeSavedModel && (
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Aktif: {activeSavedModel.modelName}
+              </span>
+            )}
           </div>
-          <p className="mt-1.5 text-xs text-stone-600 leading-relaxed [text-wrap:pretty]">
-            Kelola API key dan tentukan model kecerdasan buatan aktif untuk Chatbot Konsultasi Herbal Medika publik.
+          <p className="mt-1 text-xs sm:text-sm text-stone-600">
+            Konfigurasikan gateway AI multi-model, kustomisasi pesan sapaan apotek, dan kelola basis data vektor (RAG).
           </p>
         </div>
 
-        {/* Active Badge */}
-        {(() => {
-          const active = models.find((m) => m.isActive)
-          const name = PROVIDERS.find((p) => p.id === active?.provider)?.name
-          return (
-            <div className="flex items-center gap-2 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 px-3.5 py-2 text-xs font-semibold text-emerald-800 shrink-0">
-              <span className={`flex h-2.5 w-2.5 rounded-full ${active ? "bg-emerald-500 animate-pulse" : "bg-stone-300"}`} />
-              <span>{active ? `Model Aktif: ${name || active.provider} (${active.modelName})` : "Belum ada model aktif"}</span>
-            </div>
-          )
-        })()}
+        {/* Tab Switcher */}
+        <div className="bg-stone-100 p-1 rounded-2xl flex items-center gap-1 border border-stone-200">
+          <button
+            type="button"
+            onClick={() => setActiveTab("models")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              activeTab === "models"
+                ? "bg-white text-emerald-800 shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Cpu className="h-3.5 w-3.5" />
+            Model Gateway
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("welcome")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              activeTab === "welcome"
+                ? "bg-white text-emerald-800 shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Sapaan Chatbot
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("rag")}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+              activeTab === "rag"
+                ? "bg-white text-emerald-800 shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Database className="h-3.5 w-3.5" />
+            Custom RAG / Vektor
+          </button>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* TAB 2: SAPAAN PEMBUKA CHATBOT (MODUL 4)                        */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "welcome" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Notifications */}
+          {welcomeSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span>{welcomeSuccess}</span>
+            </div>
+          )}
+          {welcomeError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 font-semibold flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-600" />
+              <span>{welcomeError}</span>
+            </div>
+          )}
+
+          {/* AI Generator Banner */}
+          <div className="bg-linear-to-r from-emerald-800 via-teal-800 to-emerald-900 text-white rounded-3xl p-5 shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-400" />
+                  Rekomendasi Sapaan Cerdas Berbasis AI
+                </h3>
+                <p className="text-xs text-emerald-100 mt-1 max-w-xl">
+                  Gunakan model AI aktif Anda untuk meracik variasi pesan sapaan apotek yang hangat, empatik, dan persuasif tanpa terkesan memaksa jualan.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateAiSuggestions}
+                disabled={isGeneratingAi}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 text-amber-950 font-bold text-xs hover:bg-amber-300 transition shadow-xs active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                {isGeneratingAi ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Meracik Ide...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    <span>Minta Ide dari AI</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Generated AI Suggestions Grid */}
+            {aiWelcomeSuggestions.length > 0 && (
+              <div className="pt-3 border-t border-white/20 grid grid-cols-1 md:grid-cols-3 gap-3">
+                {aiWelcomeSuggestions.map((sug, idx) => (
+                  <div key={idx} className="bg-white/10 rounded-2xl p-3 text-xs space-y-2 flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-amber-300">{sug.title}</p>
+                      <p className="text-white/90 text-[11px] leading-relaxed mt-1 line-clamp-4">{sug.content}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWelcomeFormTitle(sug.title)
+                        setWelcomeFormContent(sug.content)
+                        setWelcomeFormActive(true)
+                      }}
+                      className="w-full mt-2 py-1.5 px-2 bg-white text-emerald-950 font-bold rounded-lg text-[10px] hover:bg-emerald-50 transition"
+                    >
+                      Gunakan Sapaan Ini
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Form Tambah/Edit Sapaan */}
+            <div className="lg:col-span-5 bg-white rounded-3xl border border-stone-200 p-5 shadow-xs space-y-4">
+              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-emerald-700" />
+                {editingWelcomeId ? "Edit Pesan Sapaan" : "Buat Sapaan Baru"}
+              </h3>
+
+              <form onSubmit={handleSaveWelcome} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">Judul / Label Sapaan</label>
+                  <input
+                    type="text"
+                    required
+                    value={welcomeFormTitle}
+                    onChange={(e) => setWelcomeFormTitle(e.target.value)}
+                    placeholder="Contoh: Sapaan Apoteker Hangat"
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Konten Sapaan (Gunakan <code className="text-emerald-700">{"{{name}}"}</code> untuk nama pasien)
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={welcomeFormContent}
+                    onChange={(e) => setWelcomeFormContent(e.target.value)}
+                    placeholder="Halo Kak {{name}}, selamat datang di Apotek Herbal Medika! Bagaimana kondisi kesehatan Anda hari ini? Kami siap mendengarkan..."
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-800 leading-relaxed focus:bg-white focus:outline-emerald-600"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="welcomeActive"
+                    checked={welcomeFormActive}
+                    onChange={(e) => setWelcomeFormActive(e.target.checked)}
+                    className="h-4 w-4 rounded-sm border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <label htmlFor="welcomeActive" className="text-xs font-medium text-stone-700 cursor-pointer">
+                    Jadikan Sapaan Aktif di Chatbot Publik
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                  >
+                    {editingWelcomeId ? "Simpan Perubahan" : "Tambah Sapaan"}
+                  </button>
+                  {editingWelcomeId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingWelcomeId(null)
+                        setWelcomeFormTitle("")
+                        setWelcomeFormContent("")
+                        setWelcomeFormActive(false)
+                      }}
+                      className="py-2 px-3 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold"
+                    >
+                      Batal
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Daftar Sapaan Tersimpan */}
+            <div className="lg:col-span-7 bg-white rounded-3xl border border-stone-200 p-5 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-sm text-stone-900">Koleksi Pesan Sapaan ({welcomeList.length})</h3>
+                <span className="text-[11px] text-stone-500">1 pesan aktif digunakan di widget</span>
+              </div>
+
+              {isLoadingWelcome ? (
+                <div className="p-8 flex justify-center items-center text-stone-400">
+                  <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                </div>
+              ) : welcomeList.length === 0 ? (
+                <div className="p-8 text-center text-stone-400 text-xs">Belum ada sapaan tersimpan.</div>
+              ) : (
+                <div className="space-y-3">
+                  {welcomeList.map((wm) => (
+                    <div
+                      key={wm.id}
+                      className={`p-3.5 rounded-2xl border transition space-y-2 ${
+                        wm.isActive
+                          ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-500/20"
+                          : "bg-white border-stone-200 hover:border-stone-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-stone-900">{wm.title}</span>
+                          {wm.isActive ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-600 text-white flex items-center gap-1">
+                              <Check className="h-3 w-3" />
+                              Aktif
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleActivateWelcome(wm.id)}
+                              className="text-[10px] font-semibold text-emerald-700 hover:underline"
+                            >
+                              Gunakan Sapaan Ini
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingWelcomeId(wm.id)
+                              setWelcomeFormTitle(wm.title)
+                              setWelcomeFormContent(wm.content)
+                              setWelcomeFormActive(wm.isActive)
+                            }}
+                            className="p-1 text-stone-400 hover:text-stone-700"
+                            title="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteWelcome(wm.id)}
+                            className="p-1 text-stone-400 hover:text-red-600"
+                            title="Hapus"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">{wm.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      ) : (
-        <form onSubmit={handleSave} className="space-y-6">
-          {/* ── DAFTAR MODEL TERSIMPAN ── */}
-          <div className="rounded-3xl border border-[#EFECE6] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between gap-3">
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* TAB 3: CUSTOM RAG / VECTOR KNOWLEDGE BASE (MODUL 6)            */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "rag" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Notifications */}
+          {reindexSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <span>{reindexSuccess}</span>
+            </div>
+          )}
+          {reindexError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 font-semibold flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-600" />
+              <span>{reindexError}</span>
+            </div>
+          )}
+
+          {/* RAG Knowledge Base Status Banner */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                  <Database className="h-4 w-4 text-emerald-700" />
+                  Basis Vektor Katalog Herbal BPOM
+                </h3>
+                <p className="text-xs text-stone-600 mt-1 max-w-xl">
+                  Sistem mengekstrak nama, khasiat klinis, indikasi patologis, dan aturan pakai dari 30 produk herbal resmi BPOM menjadi representasi vektor berdimensi tinggi untuk pencarian semantik (Semantic Grounding).
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleReindexRag}
+                disabled={isReindexing}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 text-white font-bold text-xs hover:bg-emerald-800 transition shadow-xs active:scale-95 disabled:opacity-50 shrink-0 cursor-pointer"
+              >
+                {isReindexing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Sedang Mengindeks Vektor...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Re-index Vector Knowledge Base</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Semantic Search Tester (Playground) */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-5 shadow-xs space-y-4">
+            <div>
+              <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                <Search className="h-4 w-4 text-teal-700" />
+                Uji Pencarian Vektor Semantik (RAG Playground)
+              </h3>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Ketik keluhan atau kata kunci medis bebas untuk melihat Top-3 produk herbal yang paling relevan secara semantik berdasarkan Cosine Similarity.
+              </p>
+            </div>
+
+            <form onSubmit={handleTestRagSearch} className="flex gap-2">
+              <input
+                type="text"
+                value={ragQuery}
+                onChange={(e) => setRagQuery(e.target.value)}
+                placeholder="Contoh: leher pegal dan kolesterol tinggi, jempol kaki ngilu asam urat..."
+                className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600"
+              />
+              <button
+                type="submit"
+                disabled={isSearchingRag || !ragQuery.trim()}
+                className="px-4 py-2 bg-stone-900 hover:bg-black text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5"
+              >
+                {isSearchingRag ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                <span>Cari Semantik</span>
+              </button>
+            </form>
+
+            {ragResults.length > 0 && (
+              <div className="space-y-2.5 pt-2">
+                <p className="text-xs font-bold text-stone-700">Top-3 Produk Paling Cocok (Grounding Context):</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {ragResults.map((r, idx) => (
+                    <div key={idx} className="bg-teal-50/70 border border-teal-200 rounded-2xl p-3.5 text-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-teal-950 truncate">{r.metadata?.name || r.product?.name}</span>
+                        <span className="font-bold text-[10px] px-2 py-0.5 rounded-md bg-teal-700 text-white">
+                          {(r.score * 100).toFixed(1)}% Match
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-600 line-clamp-3 leading-relaxed">
+                        {r.product?.description || r.textChunk}
+                      </p>
+                      <div className="pt-1 text-[10px] font-semibold text-emerald-800 flex justify-between">
+                        <span>{r.metadata?.sku || r.product?.sku}</span>
+                        <span>Rp {Number(r.metadata?.price || r.product?.price || 0).toLocaleString("id-ID")}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* TAB 1: MODEL AI GATEWAY (EXISTING MULTI-MODEL CRUD)            */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "models" && (
+        <>
+          {/* ── PANEL MODEL TERSIMPAN ── */}
+          <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-stone-100 pb-3">
               <div>
                 <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-emerald-700" />
-                  Model Tersimpan ({models.length})
+                  <Cpu className="h-4 w-4 text-emerald-700" />
+                  Model Tersimpan di Database
                 </h2>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Hanya satu model yang aktif melayani chatbot. Edit, hapus, atau tambah model kapan saja.
+                <p className="text-xs text-stone-500">
+                  Model dengan tanda centang hijau adalah yang saat ini aktif melayani chatbot pelanggan.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={resetForm}
-                className="press-tactile min-h-[44px] inline-flex items-center gap-1.5 rounded-2xl border border-emerald-300 bg-emerald-50 px-4 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition shrink-0"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-700/30 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition active:scale-95 cursor-pointer self-start sm:self-auto"
               >
-                <Plus className="h-4 w-4" />
-                <span>Tambah Model</span>
+                <Plus className="h-3.5 w-3.5" />
+                Tambah Model Baru
               </button>
             </div>
 
-            {models.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4 text-xs text-stone-500">
-                Belum ada model tersimpan. Isi form di bawah lalu klik Simpan untuk menambahkan model pertama.
-              </p>
+            {isLoading ? (
+              <div className="py-8 flex items-center justify-center gap-2 text-stone-500 text-xs">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-700" />
+                <span>Memuat daftar model tersimpan...</span>
+              </div>
+            ) : savedModels.length === 0 ? (
+              <p className="text-xs text-stone-500 italic">Belum ada model tersimpan di database.</p>
             ) : (
-              <ul className="space-y-2.5">
-                {models.map((m) => {
-                  const isEditing = editingId === m.id
-                  const busy = busyId === m.id
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {savedModels.map((m) => {
+                  const isCurrentEditing = editingId === m.id
+                  const isBusy = busyId === m.id
                   return (
-                    <li
+                    <div
                       key={m.id}
-                      className={`flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border p-3.5 transition ${
-                        isEditing ? "border-emerald-600 bg-emerald-50/40" : "border-stone-200 bg-stone-50/50"
+                      className={`relative rounded-2xl p-4 border transition ${
+                        m.isActive
+                          ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-500/20"
+                          : isCurrentEditing
+                            ? "border-stone-400 bg-stone-50"
+                            : "border-stone-200 bg-white hover:border-stone-300"
                       }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-stone-900 truncate">
-                            {PROVIDERS.find((p) => p.id === m.provider)?.name || m.provider}
-                          </span>
-                          {m.isActive && (
-                            <span className="rounded-md bg-emerald-700 px-2 py-0.5 text-[10px] font-semibold text-white">Aktif</span>
-                          )}
-                          {isEditing && (
-                            <span className="rounded-md bg-stone-200 px-2 py-0.5 text-[10px] font-semibold text-stone-700">Sedang diedit</span>
-                          )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-xs text-stone-900 truncate">
+                              {m.modelName || m.provider}
+                            </span>
+                            {m.isActive && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Power className="h-2.5 w-2.5" />
+                                Aktif
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-500 font-medium capitalize mt-0.5">
+                            Penyedia: {m.provider}
+                          </p>
                         </div>
-                        <p className="text-xs font-mono text-stone-600 truncate mt-0.5">{m.modelName}</p>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          Key: {m.hasKey ? m.maskedApiKey : "belum diisi"}
-                          {m.baseUrl ? ` • ${m.baseUrl}` : ""}
-                        </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {!m.isActive && (
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => handleActivate(m.id)}
-                            className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-white px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-50 disabled:opacity-50 transition"
-                            title="Jadikan model aktif"
-                          >
-                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}
-                            <span className="hidden sm:inline">Aktifkan</span>
-                          </button>
+
+                      <div className="mt-2.5 text-[11px] text-stone-600 space-y-0.5">
+                        <p className="truncate font-mono text-[10px] text-stone-500">
+                          Kunci API: {m.hasKey ? m.maskedApiKey : "(belum ada)"}
+                        </p>
+                        {m.baseUrl && (
+                          <p className="truncate text-[10px] text-stone-400 font-mono">
+                            URL: {m.baseUrl}
+                          </p>
                         )}
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-stone-200/60 flex items-center justify-between gap-2">
                         <button
                           type="button"
                           onClick={() => {
                             setEditingId(m.id)
                             fillForm(m)
-                            window.scrollTo({ top: 0, behavior: "smooth" })
                           }}
-                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition"
-                          title="Edit model"
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-700 hover:text-emerald-700"
                         >
-                          <Pencil className="h-4 w-4" />
-                          <span className="hidden sm:inline">Edit</span>
+                          <Pencil className="h-3 w-3" />
+                          Edit
                         </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => handleDelete(m)}
-                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 transition"
-                          title="Hapus model"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Hapus</span>
-                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          {!m.isActive && (
+                            <button
+                              type="button"
+                              onClick={() => handleActivate(m.id)}
+                              disabled={isBusy}
+                              className="rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 text-[10px] font-bold transition shadow-xs disabled:opacity-50"
+                            >
+                              {isBusy ? "Mengaktifkan..." : "Aktifkan"}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(m)}
+                            disabled={isBusy}
+                            className="p-1 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 transition"
+                            title="Hapus model"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </li>
+                    </div>
                   )
                 })}
-              </ul>
-            )}
-
-            <p className="text-[11px] font-semibold text-emerald-800">
-              {editingId ? "Mode: mengedit model terpilih — ubah form di bawah lalu Simpan." : "Mode: menambah model baru — isi form di bawah lalu Simpan."}
-            </p>
-          </div>
-
-          {/* ── STEP 1: PILIH PROVIDER AI ── */}
-          <div className="rounded-3xl border border-[#EFECE6] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <Cpu className="h-4 w-4 text-emerald-700" />
-                  1. Pilih Provider Kecerdasan Buatan (AI Engine)
-                </h2>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Tersedia integrasi cloud API resmi maupun server lokal (Ollama).
-                </p>
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2">
-              {PROVIDERS.map((prov) => {
-                const isSelected = provider === prov.id
-                return (
-                  <button
-                    key={prov.id}
-                    type="button"
-                    onClick={() => handleProviderSelect(prov)}
-                    className={`text-left p-4 rounded-2xl border transition-all relative flex flex-col justify-between cursor-pointer ${
-                      isSelected
-                        ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600/30 shadow-xs"
-                        : "border-stone-200 bg-stone-50/50 hover:bg-stone-50 hover:border-stone-300"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="font-bold text-xs text-stone-900">
-                          {prov.name}
-                        </span>
-                        <span
-                          className={`text-[9px] font-semibold px-2 py-0.5 rounded-md ${
-                            isSelected
-                              ? "bg-emerald-700 text-white"
-                              : "bg-stone-200 text-stone-700"
-                          }`}
-                        >
-                          {prov.badge}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-600 leading-relaxed line-clamp-2">
-                        {prov.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-stone-200/60 flex items-center justify-between text-[10px] text-stone-500">
-                      <span>Default: {prov.defaultModel}</span>
-                      {isSelected && (
-                        <span className="font-bold text-emerald-700 flex items-center gap-0.5">
-                          Dipilih ✓
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+            )}
           </div>
 
-          {/* ── STEP 2: MODEL SELECTION & API CREDENTIALS ── */}
-          <div className="rounded-3xl border border-[#EFECE6] bg-white p-5 sm:p-6 shadow-xs space-y-5">
-            <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <Key className="h-4 w-4 text-emerald-700" />
-              2. Kredensial &amp; Konfigurasi Model
-            </h2>
+          {/* ── FORM EDIT / TAMBAH MODEL ── */}
+          <form onSubmit={handleSaveModel} className="space-y-6">
+            <div className="rounded-3xl border border-stone-200 bg-white p-5 sm:p-6 shadow-xs space-y-6">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                <div>
+                  <h2 className="text-base font-bold text-stone-900">
+                    {editingId ? "Edit Konfigurasi Model" : "Tambah Model AI Baru"}
+                  </h2>
+                  <p className="text-xs text-stone-500">
+                    Atur kunci otentikasi, model inferensi, dan instruksi penyesuaian klinis.
+                  </p>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Model Name Preset / Input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                  Nama Model ({selectedProviderConfig.name})
+              {/* Provider Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-3">
+                  Pilih Penyedia AI
                 </label>
-                <div className="flex gap-2">
-                  {selectedProviderConfig.models.filter((m) => m !== "custom").length > 0 && (
-                    <select
-                      value={selectedProviderConfig.models.includes(modelName) ? modelName : "custom"}
-                      onChange={(e) => {
-                        if (e.target.value === "custom") {
-                          if (selectedProviderConfig.models.includes(modelName)) {
-                            setModelName("")
-                          }
-                        } else {
-                          setModelName(e.target.value)
-                        }
-                      }}
-                      className="rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs text-stone-900 font-medium focus:bg-white focus:border-emerald-600 focus:outline-hidden transition shrink-0 max-w-[200px]"
-                    >
-                      {selectedProviderConfig.models
-                        .filter((m) => m !== "custom")
-                        .map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      <option value="custom">Model Kustom Lainnya...</option>
-                    </select>
-                  )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {PROVIDERS.map((prov) => {
+                    const isSelected = provider === prov.id
+                    return (
+                      <button
+                        key={prov.id}
+                        type="button"
+                        onClick={() => handleProviderSelect(prov)}
+                        className={`text-left rounded-2xl p-3.5 border transition cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? "border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-500/20"
+                            : "border-stone-200 bg-white hover:border-stone-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1 mb-2">
+                          <span className="font-bold text-xs text-stone-900">{prov.name}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600">
+                            {prov.badge}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 leading-snug line-clamp-2">
+                          {prov.description}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
+              {/* Model & Endpoint */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Nama Model
+                  </label>
+                  {currentProviderConfig.models.length > 0 ? (
+                    <select
+                      value={modelName}
+                      onChange={(e) => setModelName(e.target.value)}
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600"
+                    >
+                      {currentProviderConfig.models.map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      value={modelName}
+                      onChange={(e) => setModelName(e.target.value)}
+                      placeholder="Contoh: llama3.3:latest atau mistral"
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600 font-mono"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    Base URL / Endpoint Kustom (Opsional)
+                  </label>
                   <input
                     type="text"
-                    value={modelName}
-                    onChange={(e) => setModelName(e.target.value)}
-                    placeholder={
-                      provider === "nvidia"
-                        ? "cth: meta/llama-3.3-70b-instruct"
-                        : "Ketik nama model (cth: gpt-4o, mistral, dll)"
-                    }
-                    className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs font-mono text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
-                    required
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder={currentProviderConfig.defaultBaseUrl || "https://..."}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600 font-mono"
                   />
                 </div>
-                <p className="text-[11px] text-stone-500">
-                  Pilih preset cepat atau ketik identifier model spesifik dari penyedia AI.
-                </p>
               </div>
 
               {/* API Key */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                    API Secret Key
-                  </label>
-                  {hasKey && (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                      Tersimpan: {maskedApiKey}
-                    </span>
-                  )}
-                </div>
-
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Kunci API (API Key)
+                </label>
                 <div className="relative">
                   <input
                     type={showKey ? "text" : "password"}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={
-                      hasKey
-                        ? "Kosongkan jika tidak ingin mengubah key lama"
-                        : "Masukkan API key (cth: AIzaSy... / sk-...)"
-                    }
-                    className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 pr-10 text-xs font-mono text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
+                    placeholder="Masukkan kunci API resmi..."
+                    className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-3 pr-10 py-2 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600 font-mono"
                   />
                   <button
                     type="button"
                     onClick={() => setShowKey(!showKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
-                    title={showKey ? "Sembunyikan" : "Tampilkan"}
+                    className="absolute right-3 top-2 text-stone-400 hover:text-stone-600"
                   >
                     {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                <p className="text-[11px] text-stone-500">
-                  Key disimpan dengan aman di Neon PostgreSQL dan ditransmisikan hanya via Netlify Function terlindungi.
-                </p>
               </div>
-            </div>
 
-            {/* Base URL (Optional / Ollama / Proxy) */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Globe className="h-3.5 w-3.5 text-stone-500" />
-                Custom Endpoint / Base URL (Opsional)
-              </label>
-              <input
-                type="text"
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="Contoh: https://api.openai.com/v1 atau http://localhost:11434/v1"
-                className="w-full rounded-2xl border border-stone-300 bg-stone-50 px-3.5 py-2.5 text-xs font-mono text-stone-900 placeholder:text-stone-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
-              />
-              <p className="text-[11px] text-stone-500">
-                Gunakan jika Anda menggunakan reverse proxy, Cloudflare AI Gateway, atau Ollama di jaringan lokal.
-              </p>
-            </div>
-          </div>
-
-          {/* ── STEP 3: ADVANCED PARAMETERS & SYSTEM PROMPT ── */}
-          <div className="rounded-3xl border border-[#EFECE6] bg-white p-5 sm:p-6 shadow-xs space-y-5">
-            <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <Sliders className="h-4 w-4 text-emerald-700" />
-              3. Parameter Generatif &amp; Guardrail Medis
-            </h2>
-
-            <div className="space-y-4">
               {/* Temperature Slider */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-stone-700 uppercase tracking-wider">
-                    Kreativitas / Temperature: <span className="tabular-nums font-bold text-emerald-800">{temperature}</span>
-                  </span>
-                  <span className="text-stone-500 text-[11px]">
-                    (0.2 Presisi Ketat — 0.8 Eksploratif)
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-stone-700">
+                    Suhu Responsif (Temperature): {temperature}
+                  </label>
+                  <span className="text-[10px] text-stone-500">
+                    {temperature <= 0.4 ? "Akurasi Medis Terkontrol" : "Lebih Kreatif"}
                   </span>
                 </div>
                 <input
@@ -691,124 +1145,108 @@ export function AiSettingsPage() {
                   step="0.05"
                   value={temperature}
                   onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                  className="w-full accent-emerald-700 h-2 bg-stone-200 rounded-lg cursor-pointer"
+                  className="w-full accent-emerald-700 cursor-pointer"
                 />
-                <p className="text-[11px] text-stone-500">
-                  Rekomendasi nilai <b>0.30 - 0.45</b> untuk konsultasi kesehatan dan resep herbal agar respon akurat secara patologis dan tidak berhalusinasi.
-                </p>
               </div>
 
               {/* System Prompt Override */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  Instruksi Sistem Tambahan (*System Prompt Override*)
+              <div>
+                <label className="block text-xs font-semibold text-stone-700 mb-1">
+                  Instruksi Tambahan (System Prompt Override)
                 </label>
                 <textarea
                   rows={3}
                   value={systemPromptOverride}
                   onChange={(e) => setSystemPromptOverride(e.target.value)}
-                  placeholder="Ketik instruksi khusus (misal: 'Sapa pelanggan dengan sebutan Sahabat Herbal dan selalu sarankan minum air hangat')."
-                  className="w-full rounded-2xl border border-stone-300 bg-stone-50 p-3 text-xs text-stone-900 leading-relaxed placeholder:text-stone-400 focus:bg-white focus:border-emerald-600 focus:outline-hidden transition"
+                  placeholder="Instruksi tambahan khusus untuk asisten AI apotek Anda..."
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-800 focus:bg-white focus:outline-emerald-600"
                 />
               </div>
-            </div>
-          </div>
 
-          {/* ── TEST CONNECTION & SAVE ACTIONS ── */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={handleTestConnection}
-                disabled={isTesting}
-                className="press-tactile flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 disabled:opacity-50 transition"
-              >
-                {isTesting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-emerald-700" />
-                    <span>Menguji Koneksi...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4 text-emerald-700" />
-                    <span>Uji Koneksi AI (*Test Ping*)</span>
-                  </>
-                )}
-              </button>
+              {/* Active Toggle */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="modelIsActive"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="h-4 w-4 rounded-sm border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <label htmlFor="modelIsActive" className="text-xs font-semibold text-stone-800 cursor-pointer">
+                  Jadikan Model Aktif Saat Ini
+                </label>
+              </div>
 
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="press-tactile flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center gap-2 rounded-2xl bg-[#FF5A2B] px-6 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/25 hover:bg-[#E5481B] active:scale-95 disabled:opacity-50 transition"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-white" />
-                    <span>Menyimpan...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    <span>{editingId ? "Simpan Perubahan" : "Tambah Model"}</span>
-                  </>
-                )}
-              </button>
-            </div>
+              {/* Form Buttons */}
+              <div className="flex items-center gap-3 pt-3 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={isTesting}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold transition active:scale-95"
+                >
+                  {isTesting ? <Loader2 className="h-4 w-4 animate-spin text-emerald-700" /> : <Zap className="h-4 w-4 text-amber-500" />}
+                  <span>Uji Koneksi AI</span>
+                </button>
 
-            {/* Info Notice */}
-            <p className="text-[11px] text-stone-500 flex items-center gap-1">
-              <HelpCircle className="h-3.5 w-3.5 text-stone-400" />
-              Sistem otomatis beralih ke Mesin Heuristik Klinis jika API Key belum disetel.
-            </p>
-          </div>
-
-          {/* ── TEST RESULT BANNER ── */}
-          {testResult && (
-            <div
-              className={`rounded-2xl p-4 text-xs font-medium border animate-in slide-in-from-top-2 duration-200 flex items-start gap-3 ${
-                testResult.ok
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                  : "bg-red-50 border-red-200 text-red-900"
-              }`}
-            >
-              {testResult.ok ? (
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1">
-                <p className="font-bold">
-                  {testResult.ok ? "Verifikasi AI Berhasil!" : "Verifikasi AI Gagal"}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-relaxed">
-                  {testResult.message}
-                </p>
-                {testResult.latencyMs && (
-                  <p className="mt-1 text-[10px] font-mono text-emerald-700">
-                    Waktu Respon (Latensi): {testResult.latencyMs} ms
-                  </p>
-                )}
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs active:scale-98"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>{editingId ? "Simpan Perubahan" : "Tambah Model"}</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          )}
 
-          {/* ── SAVE SUCCESS BANNER ── */}
-          {saveSuccessMsg && (
-            <div className="rounded-2xl p-4 text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-900 flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              <span>{saveSuccessMsg}</span>
-            </div>
-          )}
+            {/* Test Result Banner */}
+            {testResult && (
+              <div
+                className={`rounded-2xl p-4 text-xs font-medium border animate-in slide-in-from-top-2 duration-200 flex items-start gap-3 ${
+                  testResult.ok
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                    : "bg-red-50 border-red-200 text-red-900"
+                }`}
+              >
+                {testResult.ok ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="font-bold">{testResult.ok ? "Verifikasi AI Berhasil!" : "Verifikasi AI Gagal"}</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed">{testResult.message}</p>
+                </div>
+              </div>
+            )}
 
-          {/* ── SAVE ERROR BANNER ── */}
-          {saveErrorMsg && (
-            <div className="rounded-2xl p-4 text-xs font-bold border border-red-200 bg-red-50 text-red-900 flex items-center gap-2 animate-in slide-in-from-top-2 duration-200">
-              <XCircle className="h-5 w-5 text-red-600 shrink-0" />
-              <span>{saveErrorMsg}</span>
-            </div>
-          )}
-        </form>
+            {/* Save Success Banner */}
+            {saveSuccessMsg && (
+              <div className="rounded-2xl p-4 text-xs font-bold border border-emerald-200 bg-emerald-50 text-emerald-900 flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* Save Error Banner */}
+            {saveErrorMsg && (
+              <div className="rounded-2xl p-4 text-xs font-bold border border-red-200 bg-red-50 text-red-900 flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-red-600 shrink-0" />
+                <span>{saveErrorMsg}</span>
+              </div>
+            )}
+          </form>
+        </>
       )}
     </div>
   )

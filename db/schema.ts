@@ -291,11 +291,18 @@ export const sqliteAiSettings = sqliteTable("ai_settings", {
 // ─── Chat (Human-in-the-Loop) ────────────────────────────
 // status: ai | waiting_admin | admin | closed
 // stage:  greeting | gathering | consent_asked | recommended
+// leadStatus: hot_lead | general_inquiry | waiting_admin | archived
 export const pgChatSessions = pgTable("chat_sessions", {
   id: pgText("id").primaryKey(),
   status: pgText("status").notNull().default("ai"),
   stage: pgText("stage").notNull().default("greeting"),
   handoffReason: pgText("handoff_reason"),
+  customerName: pgText("customer_name"),
+  customerPhone: pgText("customer_phone"),
+  leadStatus: pgText("lead_status").notNull().default("general_inquiry"),
+  adminNotes: pgText("admin_notes"),
+  isArchived: pgBoolean("is_archived").notNull().default(false),
+  symptomsJson: pgText("symptoms_json"),
   createdAt: pgText("created_at").notNull(),
   updatedAt: pgText("updated_at").notNull(),
 })
@@ -311,11 +318,38 @@ export const pgChatMessages = pgTable("chat_messages", {
   createdAt: pgText("created_at").notNull(),
 })
 
+export const pgChatbotWelcomeMessages = pgTable("chatbot_welcome_messages", {
+  id: pgText("id").primaryKey(),
+  title: pgText("title").notNull(),
+  content: pgText("content").notNull(),
+  isActive: pgBoolean("is_active").notNull().default(false),
+  createdAt: pgText("created_at").notNull(),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
+export const pgProductEmbeddings = pgTable("product_embeddings", {
+  id: pgText("id").primaryKey(),
+  productId: pgText("product_id")
+    .notNull()
+    .references(() => pgProducts.id, { onDelete: "cascade" }),
+  textChunk: pgText("text_chunk").notNull(),
+  embeddingJson: pgText("embedding_json").notNull(),
+  metadataJson: pgText("metadata_json"),
+  createdAt: pgText("created_at").notNull(),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
 export const sqliteChatSessions = sqliteTable("chat_sessions", {
   id: sqText("id").primaryKey(),
   status: sqText("status").notNull().default("ai"),
   stage: sqText("stage").notNull().default("greeting"),
   handoffReason: sqText("handoff_reason"),
+  customerName: sqText("customer_name"),
+  customerPhone: sqText("customer_phone"),
+  leadStatus: sqText("lead_status").notNull().default("general_inquiry"),
+  adminNotes: sqText("admin_notes"),
+  isArchived: sqInteger("is_archived", { mode: "boolean" }).notNull().default(false as any),
+  symptomsJson: sqText("symptoms_json"),
   createdAt: sqText("created_at").notNull(),
   updatedAt: sqText("updated_at").notNull(),
 })
@@ -331,6 +365,27 @@ export const sqliteChatMessages = sqliteTable("chat_messages", {
   createdAt: sqText("created_at").notNull(),
 })
 
+export const sqliteChatbotWelcomeMessages = sqliteTable("chatbot_welcome_messages", {
+  id: sqText("id").primaryKey(),
+  title: sqText("title").notNull(),
+  content: sqText("content").notNull(),
+  isActive: sqInteger("is_active", { mode: "boolean" }).notNull().default(false as any),
+  createdAt: sqText("created_at").notNull(),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
+export const sqliteProductEmbeddings = sqliteTable("product_embeddings", {
+  id: sqText("id").primaryKey(),
+  productId: sqText("product_id")
+    .notNull()
+    .references(() => sqliteProducts.id, { onDelete: "cascade" }),
+  textChunk: sqText("text_chunk").notNull(),
+  embeddingJson: sqText("embedding_json").notNull(),
+  metadataJson: sqText("metadata_json"),
+  createdAt: sqText("created_at").notNull(),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
 // ─── Active Dual-Engine Exports ──────────────────────────
 export const roles: any = isPg ? pgRoles : sqliteRoles
 export const users: any = isPg ? pgUsers : sqliteUsers
@@ -343,6 +398,8 @@ export const inventoryLog: any = isPg ? pgInventoryLog : sqliteInventoryLog
 export const aiSettings: any = isPg ? pgAiSettings : sqliteAiSettings
 export const chatSessions: any = isPg ? pgChatSessions : sqliteChatSessions
 export const chatMessages: any = isPg ? pgChatMessages : sqliteChatMessages
+export const chatbotWelcomeMessages: any = isPg ? pgChatbotWelcomeMessages : sqliteChatbotWelcomeMessages
+export const productEmbeddings: any = isPg ? pgProductEmbeddings : sqliteProductEmbeddings
 
 // ─── Type exports ────────────────────────────────────────
 export type Role = typeof pgRoles.$inferSelect
@@ -361,4 +418,12 @@ export type InventoryLogEntry = typeof pgInventoryLog.$inferSelect
 export type NewInventoryLogEntry = typeof pgInventoryLog.$inferInsert
 export type AiSettings = typeof pgAiSettings.$inferSelect
 export type NewAiSettings = typeof pgAiSettings.$inferInsert
+export type ChatSession = typeof pgChatSessions.$inferSelect
+export type NewChatSession = typeof pgChatSessions.$inferInsert
+export type ChatMessage = typeof pgChatMessages.$inferSelect
+export type NewChatMessage = typeof pgChatMessages.$inferInsert
+export type ChatbotWelcomeMessage = typeof pgChatbotWelcomeMessages.$inferSelect
+export type NewChatbotWelcomeMessage = typeof pgChatbotWelcomeMessages.$inferInsert
+export type ProductEmbedding = typeof pgProductEmbeddings.$inferSelect
+export type NewProductEmbedding = typeof pgProductEmbeddings.$inferInsert
 

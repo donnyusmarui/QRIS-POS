@@ -8,6 +8,9 @@ interface ChatRequest {
   sessionId?: string;
   message?: string;
   action?: 'resume_ai';
+  customerName?: string;
+  customerPhone?: string;
+  symptoms?: string[];
 }
 
 interface ProductItem {
@@ -359,8 +362,31 @@ export default async (req: Request, context: Context) => {
     }
     if (!session) {
       const t = nowIso();
-      session = { id: `chat_${crypto.randomUUID()}`, status: 'ai', stage: 'greeting', handoffReason: null, createdAt: t, updatedAt: t };
+      session = {
+        id: `chat_${crypto.randomUUID()}`,
+        status: 'ai',
+        stage: 'greeting',
+        handoffReason: null,
+        customerName: body.customerName?.trim() || null,
+        customerPhone: body.customerPhone?.trim() || null,
+        leadStatus: 'general_inquiry',
+        adminNotes: null,
+        isArchived: false,
+        symptomsJson: body.symptoms && body.symptoms.length > 0 ? JSON.stringify(body.symptoms) : null,
+        createdAt: t,
+        updatedAt: t
+      };
       await db.insert(chatSessions).values(session);
+    } else {
+      // Perbarui info pelanggan bila ada data baru yang masuk
+      const leadPatch: Record<string, any> = {};
+      if (body.customerName && !session.customerName) leadPatch.customerName = body.customerName.trim();
+      if (body.customerPhone && !session.customerPhone) leadPatch.customerPhone = body.customerPhone.trim();
+      if (body.symptoms && body.symptoms.length > 0) leadPatch.symptomsJson = JSON.stringify(body.symptoms);
+      if (Object.keys(leadPatch).length > 0) {
+        await db.update(chatSessions).set({ ...leadPatch, updatedAt: nowIso() }).where(eq(chatSessions.id, session.id));
+        session = { ...session, ...leadPatch };
+      }
     }
 
     const saveMessage = async (sender: 'customer' | 'bot' | 'admin', content: string, prods?: ProductItem[]) => {
@@ -459,8 +485,13 @@ export default async (req: Request, context: Context) => {
     let handoffReason: string | null = null;
     let usedFallback = false;
 
+    const customerContext = session.customerName
+      ? `\n\nDATA PELANGGAN:\nNama Pelanggan: ${session.customerName}. Sapa dengan ramah menyebut "Kak ${session.customerName}".`
+      : '';
+
     const system =
       `${BASE_SYSTEM_PROMPT}` +
+      customerContext +
       (aiConfig.systemPromptOverride.trim() ? `\n\nINSTRUKSI TAMBAHAN DARI ADMIN:\n${aiConfig.systemPromptOverride.trim()}` : '') +
       `\n\nKATALOG PRODUK (satu-satunya sumber rekomendasi):\n${buildCatalog(catalog)}`;
 
@@ -490,11 +521,15 @@ export default async (req: Request, context: Context) => {
       nextStage = h.stage;
     }
 
+    const patchPayload: Record<string, any> = { stage: nextStage };
     if (handoffReason) {
-      await updateSession({ status: 'waiting_admin', handoffReason, stage: nextStage });
-    } else {
-      await updateSession({ stage: nextStage });
+      patchPayload.status = 'waiting_admin';
+      patchPayload.handoffReason = handoffReason;
+      patchPayload.leadStatus = 'waiting_admin';
+    } else if (nextStage === 'recommended') {
+      patchPayload.leadStatus = 'hot_lead';
     }
+    await updateSession(patchPayload);
     await saveMessage('bot', replyText, recommended);
 
     return successResponse({
