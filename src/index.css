@@ -101,7 +101,35 @@
   * {
     @apply border-border;
   }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Impeccable Numeric Rhythm (Anti-Jitter) */
+  .font-numeric {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Impeccable Micro-Interaction (Tactile Feedback) */
+  .press-tactile {
+    transition-property: transform, background-color, border-color, box-shadow;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+  .press-tactile:active {
+    transform: scale(0.975) translateY(0.5px);
+  }
+
+  /* Optical Balanced Typography */
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
   }
 }

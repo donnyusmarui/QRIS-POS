@@ -191,23 +191,25 @@ export function PosPage() {
                     key={p.id}
                     onClick={() => addItem(p)}
                     disabled={isOutOfStock}
-                    className="flex flex-col justify-between rounded-xl border bg-background p-3 text-left transition hover:border-primary hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-background p-3.5 text-left press-tactile hover:border-primary/60 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <div>
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
                         {p.category ?? "Umum"}
                       </span>
-                      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-foreground text-balance group-hover:text-primary transition-colors">
                         {p.name}
                       </h3>
                     </div>
-                    <div className="mt-3 flex items-center justify-between border-t pt-2">
-                      <span className="text-xs font-bold text-primary">
+                    <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-2.5">
+                      <span className="font-numeric text-xs font-bold text-primary">
                         {formatRupiah(p.price)}
                       </span>
                       <span
-                        className={`text-[10px] font-medium ${
-                          p.stock <= 5 ? "text-destructive font-bold" : "text-muted-foreground"
+                        className={`font-numeric rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          p.stock <= 5
+                            ? "bg-destructive/10 text-destructive font-bold"
+                            : "bg-muted text-muted-foreground"
                         }`}
                       >
                         Stok: {p.stock}
@@ -222,17 +224,17 @@ export function PosPage() {
       </div>
 
       {/* Cart & Checkout Panel */}
-      <div className="flex w-full flex-col justify-between rounded-xl border bg-card p-4 lg:w-96">
+      <div className="flex w-full flex-col justify-between rounded-xl border border-border/80 bg-card p-4 lg:w-96 shadow-sm">
         <div>
           <div className="flex items-center justify-between border-b pb-3">
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-primary" />
-              <h2 className="font-bold text-base">Keranjang Kasir</h2>
+              <h2 className="font-bold text-base tracking-tight">Keranjang Kasir</h2>
             </div>
             {items.length > 0 && (
               <button
                 onClick={clearCart}
-                className="text-xs text-destructive hover:underline"
+                className="text-xs text-destructive hover:underline font-medium"
               >
                 Reset
               </button>
@@ -256,46 +258,49 @@ export function PosPage() {
           </div>
 
           {/* Cart Items List */}
-          <div className="mt-3 max-h-[30vh] overflow-y-auto space-y-2 lg:max-h-[38vh]">
+          <div className="mt-3 max-h-[30vh] overflow-y-auto space-y-2 lg:max-h-[38vh] pr-1">
             {items.length === 0 ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
+              <div className="py-8 text-center text-xs text-muted-foreground text-pretty">
                 Keranjang masih kosong. Klik produk di katalog untuk menambahkan.
               </div>
             ) : (
               items.map((item) => (
                 <div
                   key={item.productId}
-                  className="flex items-center justify-between rounded-lg border bg-background p-2.5"
+                  className="flex items-center justify-between rounded-lg border border-border/70 bg-background p-2.5 shadow-xs"
                 >
                   <div className="flex-1 pr-2">
                     <p className="text-xs font-semibold line-clamp-1">{item.productName}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {formatRupiah(item.price)} x {item.quantity} ={" "}
+                    <p className="text-[11px] text-muted-foreground font-numeric">
+                      {formatRupiah(item.price)} × {item.quantity} ={" "}
                       <span className="font-semibold text-foreground">
                         {formatRupiah(item.price * item.quantity)}
                       </span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      className="rounded border p-1 hover:bg-muted"
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted press-tactile"
+                      title="Kurangi"
                     >
-                      <Minus className="h-3 w-3" />
+                      <Minus className="h-3.5 w-3.5" />
                     </button>
-                    <span className="w-5 text-center text-xs font-bold">
+                    <span className="w-6 text-center text-xs font-bold font-numeric">
                       {item.quantity}
                     </span>
                     <button
                       onClick={() => addItem({ id: item.productId, name: item.productName, price: item.price, stock: item.stock } as Product)}
                       disabled={item.quantity >= item.stock}
-                      className="rounded border p-1 hover:bg-muted disabled:opacity-40"
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted press-tactile disabled:opacity-40"
+                      title="Tambah"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => removeItem(item.productId)}
-                      className="rounded p-1 text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8 inline-flex items-center justify-center rounded-md text-destructive hover:bg-destructive/10 press-tactile"
+                      title="Hapus"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -315,10 +320,10 @@ export function PosPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod("cash")}
-                className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs font-medium transition ${
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium press-tactile ${
                   paymentMethod === "cash"
-                    ? "border-primary bg-primary/10 text-primary font-bold"
-                    : "hover:bg-muted"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                    : "hover:bg-muted/70 text-muted-foreground"
                 }`}
               >
                 <Banknote className="h-4 w-4" />
@@ -327,10 +332,10 @@ export function PosPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod("qris")}
-                className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs font-medium transition ${
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium press-tactile ${
                   paymentMethod === "qris"
-                    ? "border-primary bg-primary/10 text-primary font-bold"
-                    : "hover:bg-muted"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                    : "hover:bg-muted/70 text-muted-foreground"
                 }`}
               >
                 <QrCode className="h-4 w-4" />
@@ -339,10 +344,10 @@ export function PosPage() {
               <button
                 type="button"
                 onClick={() => setPaymentMethod("transfer")}
-                className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-xs font-medium transition ${
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium press-tactile ${
                   paymentMethod === "transfer"
-                    ? "border-primary bg-primary/10 text-primary font-bold"
-                    : "hover:bg-muted"
+                    ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
+                    : "hover:bg-muted/70 text-muted-foreground"
                 }`}
               >
                 <CreditCard className="h-4 w-4" />
@@ -353,8 +358,8 @@ export function PosPage() {
 
           {/* Cash input if method is cash */}
           {paymentMethod === "cash" && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
+            <div className="space-y-1.5 rounded-lg bg-muted/30 p-2.5 border border-border/50">
+              <div className="flex justify-between text-xs font-numeric">
                 <span className="text-muted-foreground">Uang Diterima:</span>
                 <span className="font-semibold">{formatRupiah(cashGiven)}</span>
               </div>
@@ -364,10 +369,10 @@ export function PosPage() {
                 value={cashGiven || ""}
                 onChange={(e) => setCashGiven(Number(e.target.value))}
                 placeholder={`Min ${total}`}
-                className="w-full rounded-lg border border-input bg-background px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs font-numeric focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               {cashGiven >= total && (
-                <div className="flex justify-between text-xs font-semibold text-emerald-600">
+                <div className="flex justify-between text-xs font-semibold text-emerald-600 font-numeric pt-1 border-t border-border/40">
                   <span>Kembalian:</span>
                   <span>{formatRupiah(cashGiven - total)}</span>
                 </div>
@@ -376,15 +381,15 @@ export function PosPage() {
           )}
 
           {/* Total & Checkout Button */}
-          <div className="flex items-center justify-between border-t pt-2">
+          <div className="flex items-center justify-between border-t border-border/80 pt-3">
             <div>
-              <p className="text-xs text-muted-foreground">Total Pembayaran</p>
-              <p className="text-xl font-bold text-primary">{formatRupiah(total)}</p>
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Total Pembayaran</p>
+              <p className="text-xl font-bold text-primary font-numeric">{formatRupiah(total)}</p>
             </div>
             <button
               onClick={handleCheckout}
               disabled={items.length === 0 || isCheckingOut || (paymentMethod === "cash" && cashGiven < total)}
-              className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground press-tactile hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
             >
               {isCheckingOut && <Loader2 className="h-4 w-4 animate-spin" />}
               {isCheckingOut ? "Memproses..." : "Bayar Sekarang"}
