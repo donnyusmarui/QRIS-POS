@@ -66,6 +66,9 @@ export default async (req: Request, context: Context) => {
       updatedAt: setting.updatedAt
     });
   } catch (err: any) {
+    if (err?.statusCode) {
+      return errorResponse(err.statusCode, err.message || 'Unauthorized');
+    }
     console.error('Error fetching AI settings:', err);
     return errorResponse(500, err?.message || 'Gagal memuat pengaturan AI');
   }

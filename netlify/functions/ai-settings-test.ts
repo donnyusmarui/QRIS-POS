@@ -174,6 +174,9 @@ export default async (req: Request, context: Context) => {
 
     return errorResponse(400, `Provider '${provider}' tidak didukung.`);
   } catch (err: any) {
+    if (err?.statusCode) {
+      return errorResponse(err.statusCode, err.message || 'Unauthorized');
+    }
     console.error('Error testing AI settings:', err);
     return errorResponse(500, err?.message || 'Gagal menguji koneksi AI');
   }

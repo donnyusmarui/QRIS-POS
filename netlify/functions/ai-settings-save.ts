@@ -99,6 +99,9 @@ export default async (req: Request, context: Context) => {
       'Pengaturan AI berhasil disimpan!'
     );
   } catch (err: any) {
+    if (err?.statusCode) {
+      return errorResponse(err.statusCode, err.message || 'Unauthorized');
+    }
     console.error('Error saving AI settings:', err);
     return errorResponse(500, err?.message || 'Gagal menyimpan pengaturan AI');
   }
