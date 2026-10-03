@@ -11,6 +11,7 @@ import { PosPage } from "@/features/transactions/PosPage"
 import { TransactionsHistoryPage } from "@/features/transactions/TransactionsHistoryPage"
 import { InventoryPage } from "@/features/inventory/InventoryPage"
 import { CustomersPage } from "@/features/customers/CustomersPage"
+import { ReportsPage } from "@/features/reports/ReportsPage"
 
 function AppRoutes() {
   return (
@@ -98,7 +99,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="reports:view">
-                <PlaceholderPage title="Laporan" />
+                <ReportsPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
@@ -122,15 +123,6 @@ function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  )
-}
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-      <p className="text-muted-foreground">Halaman ini sedang dalam pengembangan.</p>
-    </div>
   )
 }
 
