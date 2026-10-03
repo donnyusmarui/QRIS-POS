@@ -1,5 +1,4 @@
-import { useState, useMemo } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { Link } from "react-router"
 import { useCustomerCartStore } from "@/stores/customer-cart-store"
 import { CustomerCartDrawer } from "./CustomerCartDrawer"
@@ -46,21 +45,28 @@ export function CustomerPortalPage() {
     clearCart,
   } = useCustomerCartStore()
 
-  // Fetch active products from backend
-  const {
-    data: productsData,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["customer-products"],
-    queryFn: async () => {
+  // State & fetch for active products
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true)
+    try {
       const res = await fetch("/.netlify/functions/products-list?pageSize=100")
       const json = await res.json()
-      return (json.data?.items || json.data || []) as Product[]
-    },
-  })
+      const items = (json.data?.items || json.data || []) as Product[]
+      setProducts(items)
+    } catch (err) {
+      console.error("Gagal memuat produk:", err)
+      setProducts([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
 
-  const products = productsData || []
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
 
   // Extract unique categories
   const categories = useMemo(() => {
@@ -135,7 +141,7 @@ export function CustomerPortalPage() {
     setIsPaymentOpen(false)
     setIsReceiptOpen(true)
     clearCart()
-    refetch() // Refresh product stock
+    fetchProducts() // Refresh product stock
   }
 
   return (

@@ -1,6 +1,6 @@
-import { useEffect } from "react"
+import { useEffect, Component, type ReactNode } from "react"
 import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router"
-import { ShieldAlert, ArrowLeft } from "lucide-react"
+import { ShieldAlert, ArrowLeft, RefreshCw } from "lucide-react"
 import { useAuthStore } from "@/stores/auth-store"
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
@@ -15,6 +15,53 @@ import { CustomersPage } from "@/features/customers/CustomersPage"
 import { ReportsPage } from "@/features/reports/ReportsPage"
 
 import { CustomerPortalPage } from "@/features/customer/CustomerPortalPage"
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false, error: "" }
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error.message }
+  }
+
+  componentDidCatch(error: Error, info: unknown) {
+    console.error("Application Render Error:", error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-[#FBF9F5] p-6 text-center text-[#181512]">
+          <div className="relative w-full max-w-md rounded-3xl border border-[#EFECE6] bg-white p-8 shadow-jeruk-lg">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#FFF2ED] text-[#FF5A2B]">
+              <ShieldAlert className="h-7 w-7" />
+            </div>
+            <h2 className="text-xl font-black text-[#181512]">Terjadi Kesalahan Tampilan</h2>
+            <p className="mt-2 text-xs text-[#78716C] leading-relaxed">
+              {this.state.error || "Gagal memuat halaman antarmuka."}
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  this.setState({ hasError: false, error: "" })
+                  window.location.reload()
+                }}
+                className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FF5A2B] px-4 text-xs font-bold text-white shadow-md hover:bg-[#E5481B]"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Muat Ulang Halaman</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function AppRoutes() {
   return (
@@ -166,7 +213,9 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <ErrorBoundary>
+        <AppRoutes />
+      </ErrorBoundary>
     </BrowserRouter>
   )
 }
