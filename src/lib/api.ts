@@ -6,7 +6,9 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
-  const token = sessionStorage.getItem("access_token")
+  const token = typeof window !== "undefined" 
+    ? (localStorage.getItem("access_token") || sessionStorage.getItem("access_token"))
+    : null
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

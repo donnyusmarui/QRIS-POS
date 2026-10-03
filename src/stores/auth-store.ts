@@ -21,25 +21,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (res.data) {
       const { user, tokens } = res.data
       storeTokens(tokens)
-      set({ user, isAuthenticated: true })
+      set({ user, isAuthenticated: true, isLoading: false })
     }
   },
 
   logout: () => {
     clearTokens()
-    set({ user: null, isAuthenticated: false })
+    set({ user: null, isAuthenticated: false, isLoading: false })
   },
 
   checkAuth: async () => {
-    const token = sessionStorage.getItem("access_token")
+    const token = getStoredToken("access_token")
     if (!token) {
-      set({ isLoading: false })
+      set({ isLoading: false, isAuthenticated: false, user: null })
       return
     }
     try {
       const res = await authApi.me()
       if (res.data) {
         set({ user: res.data, isAuthenticated: true, isLoading: false })
+      } else {
+        clearTokens()
+        set({ user: null, isAuthenticated: false, isLoading: false })
       }
     } catch {
       clearTokens()
@@ -48,12 +51,33 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 }))
 
+function getStoredToken(key: string): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(key) || sessionStorage.getItem(key)
+}
+
 function storeTokens(tokens: AuthTokens) {
-  sessionStorage.setItem("access_token", tokens.accessToken)
-  sessionStorage.setItem("refresh_token", tokens.refreshToken)
+  try {
+    localStorage.setItem("access_token", tokens.accessToken)
+    localStorage.setItem("refresh_token", tokens.refreshToken)
+  } catch {
+    // ignore quota/private mode errors
+  }
+  try {
+    sessionStorage.setItem("access_token", tokens.accessToken)
+    sessionStorage.setItem("refresh_token", tokens.refreshToken)
+  } catch {
+    // ignore
+  }
 }
 
 function clearTokens() {
-  sessionStorage.removeItem("access_token")
-  sessionStorage.removeItem("refresh_token")
+  try {
+    localStorage.removeItem("access_token")
+    localStorage.removeItem("refresh_token")
+  } catch {}
+  try {
+    sessionStorage.removeItem("access_token")
+    sessionStorage.removeItem("refresh_token")
+  } catch {}
 }

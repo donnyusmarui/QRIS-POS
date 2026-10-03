@@ -140,7 +140,7 @@ export function PosPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] flex-col gap-4 lg:flex-row">
+    <div className="flex min-h-[calc(100dvh-5rem)] flex-col gap-4 lg:h-[calc(100dvh-6rem)] lg:flex-row">
       {/* Product Catalog Section */}
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border bg-card p-4">
         {/* Search & Category Filter */}

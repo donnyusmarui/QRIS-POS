@@ -99,13 +99,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // 2. Click outside listener
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: Event) {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setIsSearchOpen(false)
       }
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    document.addEventListener("pointerdown", handleClickOutside)
+    return () => document.removeEventListener("pointerdown", handleClickOutside)
   }, [])
 
   // 3. Debounced Live Product Search
@@ -144,9 +144,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n)
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#FBF9F5] text-[#181512]">
+    <div className="flex min-h-screen min-h-[100dvh] flex-col overscroll-none bg-[#FBF9F5] text-[#181512] lg:h-screen lg:h-[100dvh] lg:overflow-hidden">
       {/* 1. TOP HEADER: Jeruk AI Sunlight Yellow Gradient Bar */}
-      <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-black/5 bg-gradient-to-r from-[#FFE870] via-[#FFE560] to-[#FFF0A0] px-4 shadow-2xs lg:px-6">
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-black/5 bg-gradient-to-r from-[#FFE870] via-[#FFE560] to-[#FFF0A0] px-4 shadow-2xs lg:px-6">
         {/* Left: Brand Identity */}
         <div className="flex items-center gap-3">
           <button
@@ -364,11 +364,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* 2. BODY WORKSPACE: Dual Column Layout */}
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 lg:overflow-hidden">
         {/* Mobile Backdrop */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden touch-none"
             onClick={() => setSidebarOpen(false)}
           />
         )}
@@ -376,7 +376,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Left Sidebar: Minimalist Pure White with High Negative Space */}
         <aside
           className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#EFECE6] bg-white text-[#181512] transition-transform duration-200 ease-out lg:static lg:translate-x-0 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full pointer-events-none lg:pointer-events-auto"
           }`}
         >
           {/* Mobile Sidebar Close */}
@@ -487,7 +487,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Right Main Content: Floating Compartments on Warm Cream Canvas */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 lg:overflow-y-auto overscroll-contain touch-pan-y [webkit-overflow-scrolling:touch]">
           {children}
         </main>
       </div>

@@ -118,9 +118,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    min-height: 100%;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100%;
+    overscroll-behavior-y: none;
   }
 
   /* Impeccable Numeric Rhythm (Anti-Jitter) */
