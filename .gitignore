@@ -7,10 +7,17 @@ node_modules/
 dist/
 .netlify/
 
-# Environment variables
+# Database & Secrets
 .env
 .env.local
 .env.*.local
+*.local
+local.db
+local.db-journal
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
 
 # IDE / Editor
 .vscode/
