@@ -16,10 +16,20 @@ import {
 } from "drizzle-orm/sqlite-core"
 import { sql } from "drizzle-orm"
 
+export function getEnv(key: string): string | undefined {
+  try {
+    if (typeof (globalThis as any).Netlify !== "undefined" && (globalThis as any).Netlify?.env?.get) {
+      const v = (globalThis as any).Netlify.env.get(key)
+      if (v) return v
+    }
+  } catch {}
+  return process.env[key]
+}
+
 export const isPg = Boolean(
-  process.env.DATABASE_URL &&
-    (process.env.DATABASE_URL.startsWith("postgres://") ||
-      process.env.DATABASE_URL.startsWith("postgresql://"))
+  getEnv("DATABASE_URL") &&
+    (getEnv("DATABASE_URL")!.startsWith("postgres://") ||
+      getEnv("DATABASE_URL")!.startsWith("postgresql://"))
 )
 
 // ─── PostgreSQL Tables (Neon Serverless) ─────────────────

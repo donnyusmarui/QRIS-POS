@@ -5,13 +5,23 @@ import * as schema from "./schema"
 
 let poolInstance: Pool | null = null
 
+export function getEnv(key: string): string | undefined {
+  try {
+    if (typeof (globalThis as any).Netlify !== "undefined" && (globalThis as any).Netlify?.env?.get) {
+      const v = (globalThis as any).Netlify.env.get(key)
+      if (v) return v
+    }
+  } catch {}
+  return process.env[key]
+}
+
 export function isNeonPg(): boolean {
-  const url = process.env.DATABASE_URL
+  const url = getEnv("DATABASE_URL")
   return Boolean(url && (url.startsWith("postgres://") || url.startsWith("postgresql://")))
 }
 
 export function createDb() {
-  const databaseUrl = process.env.DATABASE_URL
+  const databaseUrl = getEnv("DATABASE_URL")
   if (databaseUrl && (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://"))) {
     if (!poolInstance) {
       poolInstance = new Pool({ connectionString: databaseUrl })
