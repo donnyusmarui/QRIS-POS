@@ -9,6 +9,8 @@ import { DashboardPage } from "@/features/dashboard/DashboardPage"
 import { ProductsPage } from "@/features/products/ProductsPage"
 import { PosPage } from "@/features/transactions/PosPage"
 import { TransactionsHistoryPage } from "@/features/transactions/TransactionsHistoryPage"
+import { InventoryPage } from "@/features/inventory/InventoryPage"
+import { CustomersPage } from "@/features/customers/CustomersPage"
 
 function AppRoutes() {
   return (
@@ -72,7 +74,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="inventory:manage">
-                <PlaceholderPage title="Inventory" />
+                <InventoryPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
@@ -84,7 +86,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="customers:manage">
-                <PlaceholderPage title="Pelanggan" />
+                <CustomersPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
