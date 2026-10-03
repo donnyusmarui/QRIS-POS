@@ -1,5 +1,6 @@
 import { useEffect } from "react"
-import { BrowserRouter, Routes, Route, Navigate } from "react-router"
+import { BrowserRouter, Routes, Route, Navigate, Link } from "react-router"
+import { ShieldAlert, ArrowLeft } from "lucide-react"
 import { useAuthStore } from "@/stores/auth-store"
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute"
 import { AppLayout } from "@/components/layout/AppLayout"
@@ -106,16 +107,39 @@ function AppRoutes() {
         }
       />
 
-      {/* Error pages */}
+      {/* Error / Unauthorized Page with Jeruk AI Theme */}
       <Route
         path="/unauthorized"
         element={
-          <div className="flex min-h-screen items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold">403</h1>
-              <p className="mt-2 text-muted-foreground">
-                Anda tidak memiliki akses ke halaman ini
+          <div className="relative flex min-h-screen items-center justify-center bg-[#FBF9F5] p-4 text-[#181512]">
+            {/* Top Sunlight Wash */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-[#FFEAA0]/80 via-[#FFF8D6]/40 to-transparent" />
+            
+            <div className="relative w-full max-w-md rounded-3xl border border-[#EFECE6] bg-white p-8 text-center shadow-jeruk-lg">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF2ED] text-[#FF5A2B] shadow-inner border border-orange-200/60">
+                <ShieldAlert className="h-8 w-8 text-[#FF5A2B]" />
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-red-50 border border-red-200/80 px-3 py-1 text-[11px] font-bold text-red-600 mb-2">
+                <span>Error 403 • Hak Akses Dibatasi</span>
+              </div>
+
+              <h1 className="text-2xl font-black tracking-tight text-[#181512]">
+                Akses Ditolak
+              </h1>
+              <p className="mt-2 text-xs text-[#78716C] leading-relaxed text-pretty">
+                Akun Anda tidak memiliki izin otorisasi yang cukup untuk mengakses halaman ini. Silakan hubungi Administrator sistem.
               </p>
+
+              <div className="mt-6">
+                <Link
+                  to="/"
+                  className="press-tactile inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#FF5A2B] px-4 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E5481B]"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Kembali ke Dashboard Kasir</span>
+                </Link>
+              </div>
             </div>
           </div>
         }
