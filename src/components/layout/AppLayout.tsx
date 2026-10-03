@@ -1,7 +1,7 @@
-import { useState } from "react"
-import { Link, useLocation } from "react-router"
+import { useState, useEffect, useRef } from "react"
+import { Link, useLocation, useNavigate } from "react-router"
 import { useAuthStore } from "@/stores/auth-store"
-import { hasPermission } from "@/lib/api"
+import { hasPermission, apiFetch } from "@/lib/api"
 import {
   LayoutDashboard,
   Package,
@@ -18,8 +18,9 @@ import {
   Search,
   Sparkles,
   ArrowRight,
+  Loader2,
 } from "lucide-react"
-import type { Permission } from "@/types"
+import type { Permission, Product } from "@/types"
 
 interface NavItem {
   label: string
@@ -43,14 +44,31 @@ const managementItems: NavItem[] = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [productResults, setProductResults] = useState<Product[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  
+  const searchRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
   const { user, logout } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
 
   const filterItems = (items: NavItem[]) =>
     items.filter((item) => !item.permission || hasPermission(user, item.permission))
 
   const visibleOps = filterItems(operationalItems)
   const visibleMgmt = filterItems(managementItems)
+  const allNavItems = [...visibleOps, ...visibleMgmt]
+  
+  const filteredNavItems = searchQuery.trim()
+    ? allNavItems.filter((i) =>
+        i.label.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : []
+
   const roleName = user?.roles?.[0]?.name ?? "user"
   const initials = user?.fullName
     ? user.fullName
@@ -60,6 +78,68 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         .slice(0, 2)
         .toUpperCase()
     : "DY"
+
+  // 1. Keyboard Shortcut: Ctrl+K / Cmd+K
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        inputRef.current?.focus()
+        setIsSearchOpen(true)
+      } else if (e.key === "Escape") {
+        setIsSearchOpen(false)
+        inputRef.current?.blur()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
+
+  // 2. Click outside listener
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  // 3. Debounced Live Product Search
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setProductResults([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearching(true)
+        const res = await apiFetch<{ products: Product[] }>(
+          `products-list?search=${encodeURIComponent(searchQuery)}&pageSize=5`
+        )
+        if (res.data?.products) {
+          setProductResults(res.data.products)
+        }
+      } catch {
+        // ignore
+      } finally {
+        setIsSearching(false)
+      }
+    }, 250)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  function handleSelectResult(href: string) {
+    navigate(href)
+    setIsSearchOpen(false)
+    setSearchQuery("")
+  }
+
+  const formatRupiah = (n: number) =>
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n)
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#FBF9F5] text-[#181512]">
@@ -90,17 +170,158 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        {/* Center: Global Search Bar (Simulated Jeruk AI Top Search) */}
-        <div className="hidden md:flex flex-1 max-w-sm mx-6">
+        {/* Center: Global Search Bar (Interactive Command Palette) */}
+        <div ref={searchRef} className="relative hidden md:flex flex-1 max-w-md mx-6">
           <div className="relative w-full">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8C5400]/60" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8C5400]/70" />
             <input
+              ref={inputRef}
               type="text"
-              readOnly
-              placeholder="Cari menu, transaksi, atau produk..."
-              className="w-full rounded-full border border-black/10 bg-white/80 py-1.5 pl-9 pr-4 text-xs text-[#181512] placeholder:text-[#8C5400]/60 shadow-2xs backdrop-blur-xs focus:bg-white focus:outline-none"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value)
+                setIsSearchOpen(true)
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              placeholder="Cari menu, transaksi, atau produk... (Ctrl+K)"
+              className="w-full rounded-full border border-black/10 bg-white/90 py-1.5 pl-9 pr-14 text-xs text-[#181512] placeholder:text-[#8C5400]/60 shadow-2xs backdrop-blur-xs transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#FF5A2B]/20 focus:border-[#FF5A2B]"
             />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("")
+                  setProductResults([])
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-black/5 text-[#78716C]"
+                title="Hapus pencarian"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded bg-black/5 px-1.5 py-0.5 text-[9px] font-bold text-[#8C5400]/70 border border-black/5">
+                Ctrl K
+              </span>
+            )}
           </div>
+
+          {/* Search Dropdown Results Popover */}
+          {isSearchOpen && (
+            <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[#EFECE6] bg-white p-3 shadow-jeruk-lg z-50 animate-in fade-in zoom-in-95 duration-150 space-y-3">
+              {/* State A: Typing a search query */}
+              {searchQuery.trim().length > 0 ? (
+                <>
+                  {/* Category 1: Navigation Links */}
+                  {filteredNavItems.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[#A8A29E] px-2 mb-1.5">
+                        Menu &amp; Modul
+                      </p>
+                      <div className="space-y-1">
+                        {filteredNavItems.map((item) => (
+                          <button
+                            key={item.href}
+                            type="button"
+                            onClick={() => handleSelectResult(item.href)}
+                            className="press-tactile w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#181512] hover:bg-[#FFF2ED] hover:text-[#FF5A2B] transition-colors text-left"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-[#FF5A2B]">{item.icon}</span>
+                              <span>{item.label}</span>
+                            </span>
+                            <ArrowRight className="h-3 w-3 text-[#A8A29E]" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Category 2: Matching Products from Database */}
+                  <div>
+                    <div className="flex items-center justify-between px-2 mb-1.5">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[#A8A29E]">
+                        Produk Terkait
+                      </p>
+                      {isSearching && <Loader2 className="h-3 w-3 animate-spin text-[#FF5A2B]" />}
+                    </div>
+
+                    {productResults.length > 0 ? (
+                      <div className="space-y-1">
+                        {productResults.map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => handleSelectResult("/pos")}
+                            className="press-tactile w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs text-[#181512] hover:bg-[#FFF2ED] transition-colors text-left"
+                          >
+                            <div>
+                              <p className="font-bold text-[#181512]">{p.name}</p>
+                              <span className="text-[10px] text-[#78716C]">
+                                SKU: {p.sku} • Stok: {p.stock}
+                              </span>
+                            </div>
+                            <span className="font-numeric font-bold text-[#FF5A2B] text-xs">
+                              {formatRupiah(p.price)}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      !isSearching && filteredNavItems.length === 0 && (
+                        <div className="py-4 text-center text-xs text-[#78716C]">
+                          Tidak ditemukan menu atau produk untuk "{searchQuery}"
+                        </div>
+                      )
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* State B: Empty query (Quick Shortcuts) */
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-[#A8A29E] px-2 mb-1.5">
+                    Akses Pintar Cepat
+                  </p>
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSelectResult("/pos")}
+                      className="press-tactile w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#181512] hover:bg-[#FFF2ED] hover:text-[#FF5A2B] transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <ShoppingCart className="h-3.5 w-3.5 text-[#FF5A2B]" />
+                        <span>Buka Kasir POS &amp; Pembayaran</span>
+                      </span>
+                      <span className="text-[10px] text-[#A8A29E]">/pos</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectResult("/products")}
+                      className="press-tactile w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#181512] hover:bg-[#FFF2ED] hover:text-[#FF5A2B] transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Package className="h-3.5 w-3.5 text-[#FF5A2B]" />
+                        <span>Katalog &amp; Manajemen Produk</span>
+                      </span>
+                      <span className="text-[10px] text-[#A8A29E]">/products</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectResult("/customers")}
+                      className="press-tactile w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-semibold text-[#181512] hover:bg-[#FFF2ED] hover:text-[#FF5A2B] transition-colors text-left"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Users className="h-3.5 w-3.5 text-[#FF5A2B]" />
+                        <span>Data Kontak Pelanggan</span>
+                      </span>
+                      <span className="text-[10px] text-[#A8A29E]">/customers</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: Telemetry Chips, Lang Switcher & User Avatar */}
