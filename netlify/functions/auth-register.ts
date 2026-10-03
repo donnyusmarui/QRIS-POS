@@ -32,17 +32,16 @@ export default async (req: Request, context: Context) => {
     
     const db = createDb();
     
-    const passwordHash = await bcryptjs.hash(password, 12);
+    const hash = (bcryptjs as any).default?.hash || bcryptjs.hash;
+    const hashedPassword = await hash(password, 12);
     const userId = crypto.randomUUID();
     
     try {
       await db.insert(users).values({
         id: userId,
         email,
-        passwordHash,
+        password: hashedPassword,
         fullName,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
       });
       
       const userRoleId = crypto.randomUUID();
@@ -50,7 +49,6 @@ export default async (req: Request, context: Context) => {
         id: userRoleId,
         userId,
         roleId: 'role_cashier',
-        createdAt: new Date().toISOString()
       });
       
       return successResponse({

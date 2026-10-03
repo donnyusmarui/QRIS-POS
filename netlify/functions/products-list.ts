@@ -59,13 +59,19 @@ export default async (req: Request, context: Context) => {
       .limit(pageSize)
       .offset(offset);
 
-    return successResponse({
-      items,
-      total,
-      page,
-      pageSize,
-      totalPages: Math.ceil(total / pageSize)
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: items,
+        pagination: {
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders() } }
+    );
 
   } catch (error: any) {
     console.error('Error listing products:', error);

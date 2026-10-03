@@ -21,19 +21,20 @@ const createTransactionSchema = z.object({
 
 export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders() });
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify(errorResponse('Method Not Allowed')), { status: 405, headers: corsHeaders });
+    return errorResponse(405, 'Method Not Allowed');
   }
 
-  const authResult = await requirePermission(req, 'transactions:create');
-  if (!authResult.success) {
-    return new Response(JSON.stringify(errorResponse(authResult.error || 'Unauthorized')), { status: authResult.status || 401, headers: corsHeaders });
+  let user: any;
+  try {
+    const authResult = await requirePermission(req, 'transactions:create');
+    user = authResult.user;
+  } catch (error: any) {
+    return errorResponse(error.statusCode || 401, error.message || 'Unauthorized');
   }
-
-  const user = authResult.user;
 
   try {
     const body = await req.json();
@@ -73,7 +74,7 @@ export default async (req: Request, context: Context) => {
       const [product] = await db.select().from(products).where(eq(products.id, item.productId));
       if (product) {
         await db.update(products)
-          .set({ stock: product.stock - item.quantity, updatedAt: new Date() })
+          .set({ stock: product.stock - item.quantity, updatedAt: new Date().toISOString() })
           .where(eq(products.id, item.productId));
 
         await db.insert(inventoryLog).values({
@@ -86,19 +87,19 @@ export default async (req: Request, context: Context) => {
       }
     }
 
-    return new Response(JSON.stringify(successResponse({
+    return successResponse({
       transactionId,
       status,
       totalAmount,
       qrisRefId,
-      paymentMethod
-    })), { status: 200, headers: corsHeaders });
+      paymentMethod: validatedData.paymentMethod,
+    });
 
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      return new Response(JSON.stringify(errorResponse('Validation error', error.errors)), { status: 400, headers: corsHeaders });
+      return errorResponse(400, error.errors.map(e => e.message).join(', '));
     }
     console.error('Error creating transaction:', error);
-    return new Response(JSON.stringify(errorResponse('Internal server error')), { status: 500, headers: corsHeaders });
+    return errorResponse(500, error.message || 'Internal server error');
   }
 };

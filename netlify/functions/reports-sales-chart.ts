@@ -1,26 +1,26 @@
-import { Context } from '@netlify/functions';
+import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
 import { transactions } from '../../db/schema';
 import { eq, sql, and } from 'drizzle-orm';
 import { requirePermission } from './_shared/rbac';
-import { corsHeaders } from './_shared/response';
+import { corsHeaders, successResponse, errorResponse } from './_shared/response';
 
 export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response(null, { headers: corsHeaders(), status: 204 });
   }
 
   if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ success: false, message: 'Method Not Allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return errorResponse(405, 'Method Not Allowed');
   }
 
   try {
-    const authError = await requirePermission(req, 'reports:view');
-    if (authError) return authError;
+    await requirePermission(req, 'reports:view');
+  } catch (error: any) {
+    return errorResponse(error.statusCode || 401, error.message || 'Unauthorized');
+  }
 
+  try {
     const url = new URL(req.url);
     const daysParam = url.searchParams.get('days');
     const days = daysParam ? parseInt(daysParam, 10) : 7;
@@ -42,18 +42,9 @@ export default async (req: Request, context: Context) => {
     .groupBy(sql`date(${transactions.createdAt})`)
     .orderBy(sql`date(${transactions.createdAt})`);
 
-    return new Response(JSON.stringify({
-      success: true,
-      data: chartData
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
+    return successResponse(chartData);
+  } catch (error: any) {
     console.error('reports-sales-chart error:', error);
-    return new Response(JSON.stringify({ success: false, message: 'Internal Server Error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return errorResponse(500, error.message || 'Internal Server Error');
   }
 };

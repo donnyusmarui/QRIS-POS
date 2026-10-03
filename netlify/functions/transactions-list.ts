@@ -1,29 +1,28 @@
-import { Context } from '@netlify/functions';
+import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
 import { transactions, transactionItems } from '../../db/schema';
-import { corsHeaders, successResponse, errorResponse } from './_shared/response';
-import { requirePermission } from './_shared/rbac';
+import { corsHeaders, errorResponse } from './_shared/response';
+import { requirePermission, hasPermission } from './_shared/rbac';
 import { eq, desc, and, count } from 'drizzle-orm';
 
 export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders() });
   }
 
   if (req.method !== 'GET') {
-    return new Response(JSON.stringify(errorResponse('Method Not Allowed')), { status: 405, headers: corsHeaders });
+    return errorResponse(405, 'Method Not Allowed');
   }
 
-  const authResult = await requirePermission(req, 'transactions:create');
-  if (!authResult.success) {
-    return new Response(JSON.stringify(errorResponse(authResult.error || 'Unauthorized')), { status: authResult.status || 401, headers: corsHeaders });
+  let user: any;
+  try {
+    const authResult = await requirePermission(req, 'transactions:create');
+    user = authResult.user;
+  } catch (error: any) {
+    return errorResponse(error.statusCode || 401, error.message || 'Unauthorized');
   }
 
-  const user = authResult.user;
-  
-  // Check if user has read_all
-  const readAllAuth = await requirePermission(req, 'transactions:read_all');
-  const hasReadAll = readAllAuth.success;
+  const hasReadAll = hasPermission(user.roles, 'transactions:read_all');
 
   try {
     const url = new URL(req.url);
@@ -34,29 +33,32 @@ export default async (req: Request, context: Context) => {
     const offset = (page - 1) * pageSize;
     const db = createDb();
 
-    let whereClause = undefined;
-    
+    const conditions: any[] = [];
     if (!hasReadAll) {
-      whereClause = eq(transactions.userId, user.id);
+      conditions.push(eq(transactions.userId, user.id));
     }
-    
-    if (statusParam) {
-      const statusCondition = eq(transactions.status, statusParam);
-      whereClause = whereClause ? and(whereClause, statusCondition) : statusCondition;
+    if (statusParam && (statusParam === 'pending' || statusParam === 'paid' || statusParam === 'voided')) {
+      conditions.push(eq(transactions.status, statusParam));
     }
 
-    const [totalResult] = await db.select({ count: count() }).from(transactions).where(whereClause);
-    const total = totalResult.count;
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
+    const [totalRes] = await db
+      .select({ count: count() })
+      .from(transactions)
+      .where(whereClause);
+      
+    const total = totalRes ? totalRes.count : 0;
     const totalPages = Math.ceil(total / pageSize);
 
-    const txs = await db.select()
+    const txs = await db
+      .select()
       .from(transactions)
       .where(whereClause)
       .orderBy(desc(transactions.createdAt))
       .limit(pageSize)
       .offset(offset);
 
-    // Fetch items for these transactions
     const result = [];
     for (const tx of txs) {
       const items = await db.select().from(transactionItems).where(eq(transactionItems.transactionId, tx.id));
@@ -67,10 +69,10 @@ export default async (req: Request, context: Context) => {
       success: true,
       data: result,
       pagination: { page, pageSize, total, totalPages }
-    }), { status: 200, headers: corsHeaders });
+    }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders() } });
 
   } catch (error: any) {
     console.error('Error listing transactions:', error);
-    return new Response(JSON.stringify(errorResponse('Internal server error')), { status: 500, headers: corsHeaders });
+    return errorResponse(500, error.message || 'Internal server error');
   }
 };

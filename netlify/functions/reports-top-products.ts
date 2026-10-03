@@ -1,32 +1,32 @@
-import { Context } from '@netlify/functions';
+import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
 import { transactionItems, transactions, products } from '../../db/schema';
 import { eq, sql, desc } from 'drizzle-orm';
 import { requirePermission } from './_shared/rbac';
-import { corsHeaders } from './_shared/response';
+import { corsHeaders, successResponse, errorResponse } from './_shared/response';
 
 export default async (req: Request, context: Context) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+    return new Response(null, { headers: corsHeaders(), status: 204 });
   }
 
   if (req.method !== 'GET') {
-    return new Response(JSON.stringify({ success: false, message: 'Method Not Allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return errorResponse(405, 'Method Not Allowed');
   }
 
   try {
-    const authError = await requirePermission(req, 'reports:view');
-    if (authError) return authError;
+    await requirePermission(req, 'reports:view');
+  } catch (error: any) {
+    return errorResponse(error.statusCode || 401, error.message || 'Unauthorized');
+  }
 
+  try {
     const db = createDb();
 
     const topProducts = await db.select({
       productId: transactionItems.productId,
       productName: products.name,
-      totalQuantity: sql<number>`SUM(${transactionItems.quantity})`,
+      totalQty: sql<number>`SUM(${transactionItems.quantity})`,
       totalRevenue: sql<number>`SUM(${transactionItems.subtotal})`,
     })
     .from(transactionItems)
@@ -37,18 +37,9 @@ export default async (req: Request, context: Context) => {
     .orderBy(desc(sql<number>`SUM(${transactionItems.quantity})`))
     .limit(10);
 
-    return new Response(JSON.stringify({
-      success: true,
-      data: topProducts
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
+    return successResponse(topProducts);
+  } catch (error: any) {
     console.error('reports-top-products error:', error);
-    return new Response(JSON.stringify({ success: false, message: 'Internal Server Error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return errorResponse(500, error.message || 'Internal Server Error');
   }
 };
