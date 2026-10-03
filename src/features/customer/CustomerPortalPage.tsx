@@ -36,6 +36,7 @@ function ProductCard({
   formatRupiah: (n: number) => string
 }) {
   const [imageLoaded, setImageLoaded] = useState(false)
+  const [hasError, setHasError] = useState(false)
   const isOutOfStock = product.stock <= 0
 
   // Culinary Badges based on product signature
@@ -59,7 +60,7 @@ function ProductCard({
         {/* ── Outer Image Frame with Concentric Radius & Inset Outline ── */}
         <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F6F4EE] ring-1 ring-inset ring-black/10">
           {/* Shimmer Placeholder (Prevents Layout Shift while Image Loads) */}
-          {!imageLoaded && (
+          {!imageLoaded && !hasError && (
             <div className="absolute inset-0 flex items-center justify-center bg-stone-100 animate-pulse">
               <div className="flex flex-col items-center gap-1.5 text-stone-300">
                 {product.category?.toLowerCase().includes("makanan") ? (
@@ -75,12 +76,13 @@ function ProductCard({
           )}
 
           {/* High-Definition Food Photography */}
-          {product.imageUrl ? (
+          {product.imageUrl && !hasError ? (
             <img
               src={product.imageUrl}
               alt={product.name}
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
+              onError={() => setHasError(true)}
               className={`h-full w-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
                 imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
               }`}
