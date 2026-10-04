@@ -42,18 +42,21 @@ function HerbalDetailModal({
   const isOutOfStock = product.stock <= 0
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-3xl border border-[#EFECE6] bg-white p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-stone-200/80 bg-white p-5 sm:p-7 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-250 max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
+        {/* Mobile Swipe / Sheet Handle Indicator */}
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-stone-300 sm:hidden shrink-0" />
+
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 p-2 rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
-          aria-label="Tutup"
+          className="absolute right-4 top-4 flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
+          aria-label="Tutup Detail"
         >
           <X className="h-5 w-5" />
         </button>
 
         <div className="flex flex-col sm:flex-row gap-5 items-start">
-          <div className="relative w-full sm:w-44 aspect-square rounded-2xl overflow-hidden bg-stone-100 ring-1 ring-black/10 shrink-0">
+          <div className="relative w-full sm:w-44 aspect-square rounded-2xl overflow-hidden bg-stone-100 ring-1 ring-inset ring-black/5 shrink-0">
             {product.imageUrl ? (
               <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
             ) : (
@@ -61,39 +64,39 @@ function HerbalDetailModal({
                 <Leaf className="h-12 w-12" />
               </div>
             )}
-            <span className="absolute top-2 left-2 rounded-full bg-emerald-600/95 text-white text-[9px] font-black px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+            <span className="absolute top-2.5 left-2.5 rounded-full bg-emerald-700/95 text-white text-[9px] font-bold px-2.5 py-0.5 shadow-2xs flex items-center gap-1 backdrop-blur-xs">
               <ShieldCheck className="h-3 w-3" /> BPOM Resmi
             </span>
           </div>
 
           <div className="space-y-2 flex-1">
-            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/80">
               {product.category || "Herbal Alami"}
             </span>
-            <h2 className="text-base sm:text-lg font-bold text-stone-900 leading-snug">
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 leading-snug [text-wrap:balance]">
               {product.name}
             </h2>
             <p className="text-xs font-mono text-stone-400">SKU: {product.sku}</p>
-            <p className="text-lg font-bold text-[#FF5A2B] tabular-nums">
+            <p className="text-lg sm:text-xl font-bold text-emerald-800 tabular-nums font-mono tracking-tight">
               {formatRupiah(product.price)}
             </p>
           </div>
         </div>
 
-        <div className="mt-5 space-y-3.5 border-t border-[#EFECE6] pt-4">
+        <div className="mt-5 space-y-3.5 border-t border-stone-200/80 pt-4">
           <div>
-            <h4 className="text-xs font-bold text-[#181512] flex items-center gap-1.5 uppercase tracking-wider text-[#A8A29E]">
+            <h4 className="text-xs font-bold text-stone-500 flex items-center gap-1.5 uppercase tracking-wider">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
               Informasi Khasiat &amp; Legalitas BPOM
             </h4>
-            <div className="mt-2 rounded-2xl bg-[#FDFBF7] border border-[#EFECE6] p-4 text-xs text-[#57534E] leading-relaxed">
+            <div className="mt-2 rounded-2xl bg-[#FDFBF7] border border-stone-200/80 p-4 text-xs text-stone-600 leading-relaxed [text-wrap:pretty]">
               {product.description || "Suplemen herbal alami berizin resmi BPOM RI untuk mitigasi gangguan sirkulasi darah dan penyakit degeneratif."}
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-[#78716C] bg-stone-50 p-3 rounded-xl border border-stone-200/60">
+          <div className="flex items-center justify-between text-xs text-stone-600 bg-stone-50 p-3.5 rounded-xl border border-stone-200/60">
             <span>Status Ketersediaan:</span>
-            <span className={`font-bold ${isOutOfStock ? "text-red-600" : "text-emerald-700"}`}>
+            <span className={`font-bold ${isOutOfStock ? "text-rose-600" : "text-emerald-700"}`}>
               {isOutOfStock ? "Stok Habis" : `Tersedia (${product.stock} kemasan)`}
             </span>
           </div>
@@ -105,16 +108,16 @@ function HerbalDetailModal({
                 onClose()
                 onConsultProduct(product)
               }}
-              className="py-3 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              className="min-h-[44px] h-11 w-full py-2.5 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-2xs"
             >
-              <Bot className="h-4 w-4 text-emerald-700" />
+              <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
               <span>Tanya Apoteker Khasiat Produk Ini</span>
             </button>
             <div className="flex gap-2 flex-1">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-3 px-3 rounded-xl border border-[#EFECE6] text-xs font-bold text-[#78716C] hover:bg-stone-100 transition cursor-pointer"
+                className="min-h-[44px] h-11 flex-1 py-2.5 px-3 rounded-xl border border-stone-200 text-xs font-bold text-stone-600 hover:bg-stone-100 transition cursor-pointer"
               >
                 Tutup
               </button>
@@ -125,7 +128,7 @@ function HerbalDetailModal({
                   onAddToCart(product)
                   onClose()
                 }}
-                className="flex-1 py-3 px-3 rounded-xl bg-[#FF5A2B] text-white text-xs font-bold shadow-md shadow-orange-500/25 hover:bg-[#E5481B] disabled:opacity-50 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                className="min-h-[44px] h-11 flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-700/20 disabled:opacity-50 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
                 <Plus className="h-4 w-4" />
                 <span>+ Beli</span>
@@ -180,12 +183,12 @@ function ProductCard({
   const badge = getCategoryBadge()
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-3xl border border-[#EFECE6] bg-white p-3.5 sm:p-4 shadow-sm hover:shadow-xl hover:shadow-orange-500/10 hover:border-[#FF5A2B]/40 transition-all duration-300">
+    <div className="group relative flex flex-col justify-between rounded-3xl border border-stone-200/80 bg-white p-3 sm:p-4 shadow-xs hover:shadow-md hover:border-emerald-500/30 hover:-translate-y-0.5 transition-all duration-200">
       <div className="space-y-3">
         {/* ── Outer Image Frame with Concentric Radius & Inset Outline ── */}
         <div 
           onClick={() => onViewDetail(product)}
-          className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F6F4EE] ring-1 ring-inset ring-black/10 cursor-pointer"
+          className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#F6F4EE] ring-1 ring-inset ring-black/5 cursor-pointer"
         >
           {/* Shimmer Placeholder */}
           {!imageLoaded && !hasError && (
@@ -207,14 +210,14 @@ function ProductCard({
               loading="lazy"
               onLoad={() => setImageLoaded(true)}
               onError={() => setHasError(true)}
-              className={`h-full w-full object-cover transition-all duration-500 ease-out group-hover:scale-105 ${
+              className={`h-full w-full object-cover transition-all duration-300 ease-out group-hover:scale-105 ${
                 imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
               }`}
             />
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center p-4 text-emerald-700/60 text-center">
               <Leaf className="h-10 w-10 stroke-[1.5]" />
-              <span className="text-[10px] font-bold text-[#A8A29E] uppercase tracking-wider mt-1">
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mt-1">
                 {product.category || "Herbal Alami"}
               </span>
             </div>
@@ -222,10 +225,10 @@ function ProductCard({
 
           {/* Official Verification Badges */}
           <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
-            <span className="rounded-full bg-emerald-600/95 backdrop-blur-xs px-2.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white shadow-sm flex items-center gap-1">
+            <span className="rounded-full bg-emerald-700/95 backdrop-blur-xs px-2.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white shadow-2xs flex items-center gap-1">
               <ShieldCheck className="h-3 w-3" /> BPOM RI ✅
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-[8px] font-bold shadow-xs ${badge.bg}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[8px] font-bold shadow-2xs ${badge.bg}`}>
               {badge.text}
             </span>
           </div>
@@ -233,11 +236,11 @@ function ProductCard({
           {/* Stock Availability Pill */}
           <div className="absolute bottom-2.5 left-2.5 z-10">
             {isOutOfStock ? (
-              <span className="rounded-lg bg-red-600/90 backdrop-blur-xs px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider shadow-xs">
+              <span className="rounded-lg bg-rose-600/90 backdrop-blur-xs px-2 py-0.5 text-[8.5px] font-bold text-white uppercase tracking-wider shadow-2xs">
                 Habis
               </span>
             ) : (
-              <span className="rounded-lg bg-[#181512]/80 backdrop-blur-xs px-2 py-0.5 text-[9px] font-bold text-white tabular-nums shadow-xs">
+              <span className="rounded-lg bg-stone-900/80 backdrop-blur-xs px-2 py-0.5 text-[8.5px] font-bold text-white tabular-nums shadow-2xs">
                 Sisa {product.stock}
               </span>
             )}
@@ -246,9 +249,9 @@ function ProductCard({
           {/* In-Cart Counter Indicator */}
           {inCartItem && (
             <div className="absolute top-2.5 right-2.5 z-10">
-              <span className="flex items-center gap-1 rounded-full bg-[#FF5A2B] px-2.5 py-0.5 text-[10px] font-bold text-white shadow-md">
+              <span className="flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-md">
                 <Check className="h-3 w-3 stroke-[2.5]" />
-                <span className="tabular-nums">{inCartItem.quantity}</span>
+                <span className="tabular-nums font-mono">{inCartItem.quantity}</span>
               </span>
             </div>
           )}
@@ -257,7 +260,7 @@ function ProductCard({
         {/* ── Product Information ── */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 truncate max-w-[130px]">
+            <span className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 truncate max-w-[120px]">
               {product.category || "Herbal Terstandar"}
             </span>
             <span className="text-[9px] font-mono text-stone-400 shrink-0">
@@ -267,26 +270,26 @@ function ProductCard({
 
           <h3 
             onClick={() => onViewDetail(product)}
-            className="text-xs sm:text-sm font-semibold text-stone-900 [text-wrap:balance] line-clamp-2 leading-snug group-hover:text-[#FF5A2B] transition-colors cursor-pointer"
+            className="text-xs sm:text-sm font-semibold text-stone-900 [text-wrap:balance] line-clamp-2 leading-snug min-h-[2.5rem] group-hover:text-emerald-700 transition-colors cursor-pointer"
           >
             {product.name}
           </h3>
 
           {/* Clinical description snippet */}
           {product.description && (
-            <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed [text-wrap:pretty]">
+            <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-2 leading-relaxed [text-wrap:pretty] min-h-[2rem]">
               {product.description}
             </p>
           )}
 
           <div className="pt-1 flex items-center justify-between">
-            <p className="text-sm sm:text-base font-bold text-[#FF5A2B] tabular-nums">
+            <p className="text-sm sm:text-base font-bold text-emerald-800 tabular-nums font-mono tracking-tight">
               {formatRupiah(product.price)}
             </p>
             <button
               type="button"
               onClick={() => onViewDetail(product)}
-              className="text-[10px] font-semibold text-stone-500 hover:text-[#FF5A2B] inline-flex items-center gap-0.5 transition"
+              className="min-h-[32px] px-2 py-1 text-[11px] font-semibold text-stone-500 hover:text-emerald-700 inline-flex items-center gap-1 transition"
             >
               <Info className="h-3 w-3" />
               <span>Detail</span>
@@ -295,21 +298,21 @@ function ProductCard({
         </div>
       </div>
 
-      {/* ── Action CTA ── */}
-      <div className="mt-3.5 space-y-1.5">
+      {/* ── Action CTA (Strict min 44px touch targets on mobile) ── */}
+      <div className="mt-3.5 space-y-2">
         <button
           type="button"
           disabled={isOutOfStock}
           onClick={() => onAddToCart(product)}
-          className={`press-tactile flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all shadow-xs active:scale-95 ${
+          className={`press-tactile flex w-full min-h-[44px] h-11 items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all shadow-xs active:scale-95 ${
             isOutOfStock
-              ? "bg-stone-100 text-[#A8A29E] cursor-not-allowed"
+              ? "bg-stone-100 text-stone-400 cursor-not-allowed"
               : inCartItem
-              ? "bg-[#FFF2ED] text-[#FF5A2B] border border-orange-200 hover:bg-[#FFE6DC]"
-              : "bg-[#FF5A2B] text-white shadow-orange-500/20 hover:bg-[#E5481B]"
+              ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
+              : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-700/20"
           }`}
         >
-          <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
+          <Plus className="h-4 w-4 stroke-[2.5]" />
           <span>
             {inCartItem ? `Tambah (${inCartItem.quantity})` : "+ Beli Herbal"}
           </span>
@@ -319,10 +322,10 @@ function ProductCard({
           type="button"
           onClick={() => onConsultProduct(product)}
           title={`Konsultasi Apoteker seputar khasiat ${product.name}`}
-          className="press-tactile flex w-full items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] sm:text-xs font-bold transition active:scale-95 cursor-pointer shadow-2xs"
+          className="press-tactile flex w-full min-h-[44px] h-11 items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 bg-stone-50 hover:bg-emerald-50/80 text-stone-700 hover:text-emerald-800 border border-stone-200/80 hover:border-emerald-200 text-[11px] sm:text-xs font-semibold transition active:scale-95 cursor-pointer shadow-2xs"
         >
           <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
-          <span>Tanya Khasiat ke Apoteker</span>
+          <span>Tanya Apoteker</span>
         </button>
       </div>
     </div>
@@ -477,53 +480,54 @@ export function CustomerPortalPage() {
   return (
     <div className="min-h-screen bg-[#FBF9F5] text-[#181512] flex flex-col justify-between selection:bg-[#FF5A2B]/20 selection:text-[#FF5A2B]">
       {/* ── TOP HERO WASH ── */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-[#FFEAA0]/80 via-[#FFF8D6]/40 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-emerald-100/35 via-stone-50/50 to-transparent" />
 
       {/* ── HEADER (Apotek Herbal Navigation) ── */}
-      <header className="sticky top-0 z-30 bg-[#FBF9F5]/90 backdrop-blur-md border-b border-[#EFECE6]/80 px-4 sm:px-8 py-3.5 transition-all">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-30 bg-[#FBF9F5]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 transition-all">
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
           {/* Logo & Info Apotek */}
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FF5A2B] text-white shadow-md shadow-orange-500/25">
+            <div className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-xs">
               <QrCode className="h-6 w-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-black tracking-tight text-[#181512]">
+                <span className="text-base sm:text-lg font-black tracking-tight text-stone-900">
                   QRIS-POS
                 </span>
                 <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Buka • Apotek Herbal Medika
+                  Buka • Apotek Medika
                 </span>
               </div>
-              <p className="text-[11px] text-[#78716C] font-medium hidden sm:block">
+              <p className="text-[11px] text-stone-500 font-medium hidden sm:block">
                 Katalog Resep Alami Terstandar BPOM &amp; Halal
               </p>
             </div>
           </div>
 
           {/* Right Header Navigation & Staff Portal Link */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFECE6] bg-white px-3.5 py-2 text-xs font-bold text-[#78716C] shadow-2xs hover:border-[#FF5A2B] hover:text-[#FF5A2B] transition"
+              className="inline-flex items-center gap-1.5 min-h-[40px] rounded-xl border border-stone-200/80 bg-white px-3 py-2 text-xs font-semibold text-stone-600 shadow-2xs hover:border-emerald-600 hover:text-emerald-700 transition"
               title="Akses Kasir & Manajemen Toko"
             >
-              <UserCheck className="h-4 w-4 text-[#FF5A2B]" />
+              <UserCheck className="h-4 w-4 text-emerald-600" />
               <span className="hidden sm:inline">Portal Kasir / Staff</span>
             </Link>
 
-            {/* Cart Header Button */}
+            {/* Cart Header Button (44px min touch target) */}
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="press-tactile relative flex h-10 items-center gap-2 rounded-xl bg-[#FF5A2B] px-4 text-xs font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E5481B] active:scale-95 transition"
+              className="press-tactile relative flex h-11 min-h-[44px] items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-3.5 sm:px-4 text-xs font-bold text-white shadow-xs shadow-emerald-700/20 active:scale-95 transition"
+              aria-label="Buka Keranjang Pesanan"
             >
               <ShoppingBag className="h-4 w-4" />
-              <span>Keranjang</span>
+              <span className="hidden xs:inline">Keranjang</span>
               {getTotalItems() > 0 && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-black text-[#FF5A2B] tabular-nums">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[11px] font-black text-stone-900 tabular-nums font-mono shadow-2xs">
                   {getTotalItems()}
                 </span>
               )}
@@ -533,16 +537,16 @@ export function CustomerPortalPage() {
       </header>
 
       {/* ── MAIN CONTENT WORKSPACE ── */}
-      <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-4 sm:px-8 py-6 space-y-7">
+      <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-3.5 sm:px-8 py-5 sm:py-6 space-y-6 sm:space-y-7">
         {/* ── APOTEK HERBAL HERO BANNER ── */}
-        <div className="rounded-3xl border border-orange-200/80 bg-gradient-to-r from-[#FFF5EE] via-[#FFF9F3] to-[#FFF1EA] p-6 sm:p-8 shadow-sm">
+        <div className="rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 via-stone-50/60 to-[#FDFBF7] p-5 sm:p-8 shadow-xs">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2.5 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-bold text-emerald-800 shadow-2xs">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-100/70 px-3 py-1 text-xs font-bold text-emerald-800 shadow-2xs">
                 <Leaf className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Resmi Terdaftar BPOM &amp; Bersertifikat Halal</span>
+                <span>Resmi Terdaftar BPOM RI &amp; Bersertifikat Halal</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 tracking-tight [text-wrap:balance]">
+              <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold text-stone-900 tracking-tight [text-wrap:balance]">
                 Mitigasi Penyakit Degeneratif &amp; Kualitas Darah 🌿
               </h1>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed [text-wrap:pretty]">
@@ -551,24 +555,24 @@ export function CustomerPortalPage() {
             </div>
 
             {/* Quality Proof Badges */}
-            <div className="flex flex-row lg:flex-col gap-3 shrink-0">
-              <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#EFECE6] p-3 text-xs font-bold text-stone-900 shadow-2xs">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+            <div className="flex flex-row lg:flex-col gap-2.5 sm:gap-3 shrink-0">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-white/90 border border-stone-200/80 p-3 text-xs font-bold text-stone-900 shadow-2xs flex-1 lg:flex-none">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-stone-900">100% BPOM RI</p>
-                  <p className="text-[10px] text-stone-500 font-normal">Bebas Bahan Kimia Obat</p>
+                  <p className="text-[10px] text-stone-500 font-normal">Bebas BKO</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 rounded-2xl bg-white border border-[#EFECE6] p-3 text-xs font-bold text-stone-900 shadow-2xs">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-500">
+              <div className="flex items-center gap-2.5 rounded-2xl bg-white/90 border border-stone-200/80 p-3 text-xs font-bold text-stone-900 shadow-2xs flex-1 lg:flex-none">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-500 shrink-0">
                   <Star className="h-4 w-4 fill-amber-400 stroke-amber-500" />
                 </div>
                 <div>
                   <p className="text-xs font-bold text-stone-900">⭐ 4.9 / 5.0</p>
-                  <p className="text-[10px] text-stone-500 font-normal">Rating Konsumen Puas</p>
+                  <p className="text-[10px] text-stone-500 font-normal">Rating Konsumen</p>
                 </div>
               </div>
             </div>
@@ -576,21 +580,21 @@ export function CustomerPortalPage() {
         </div>
 
         {/* ── SEARCH & CATEGORY FILTER ── */}
-        <div className="space-y-3.5">
-          {/* Search Box */}
+        <div className="space-y-3">
+          {/* Search Box (48px height) */}
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A8A29E]" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari produk herbal, no. BPOM, atau keluhan (kolesterol, asam urat, tensi, kram, gula)..."
-              className="w-full h-12 pl-11 pr-10 rounded-2xl border border-[#EFECE6] bg-white text-xs sm:text-sm font-medium text-[#181512] placeholder:text-[#A8A29E] shadow-2xs focus:border-[#FF5A2B] focus:outline-none transition"
+              placeholder="Cari produk herbal, no. BPOM, atau keluhan (kolesterol, asam urat, tensi, gula)..."
+              className="w-full h-12 pl-11 pr-12 rounded-2xl border border-stone-200/80 bg-white text-xs sm:text-sm font-medium text-stone-900 placeholder:text-stone-400 shadow-2xs focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10 focus:outline-none transition"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#A8A29E] hover:text-[#181512] p-1"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center text-stone-400 hover:text-stone-700"
                 title="Hapus pencarian"
               >
                 <X className="h-4 w-4" />
@@ -598,17 +602,17 @@ export function CustomerPortalPage() {
             )}
           </div>
 
-          {/* Category Filter Pills (Horizontal Scroll) */}
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar">
+          {/* Category Filter Pills (Horizontal Scroll with 44px min touch target) */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 no-scrollbar scroll-smooth">
             {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`press-tactile shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                className={`press-tactile shrink-0 min-h-[44px] h-11 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
                   selectedCategory === cat
-                    ? "bg-[#FF5A2B] text-white shadow-sm shadow-orange-500/25"
-                    : "bg-white text-[#78716C] border border-[#EFECE6] hover:bg-stone-50 hover:text-[#181512]"
+                    ? "bg-emerald-700 text-white shadow-xs"
+                    : "bg-white text-stone-600 border border-stone-200/80 hover:bg-stone-50 hover:text-stone-900 hover:border-stone-300"
                 }`}
               >
                 {getCategoryLabel(cat)}
@@ -617,24 +621,24 @@ export function CustomerPortalPage() {
           </div>
         </div>
 
-        {/* ── HERBAL PRODUCT GRID ── */}
+        {/* ── HERBAL PRODUCT GRID (Adaptive 2-col on mobile, 4-col on desktop) ── */}
         {isLoading ? (
           <div className="flex h-72 flex-col items-center justify-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-[#FF5A2B]" />
-            <span className="text-xs font-bold text-[#78716C]">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+            <span className="text-xs font-bold text-stone-500">
               Menyiapkan Katalog Apotek Herbal...
             </span>
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="flex h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-[#EFECE6] bg-white p-6 text-center">
-            <BadgeAlert className="h-10 w-10 text-[#A8A29E] mb-2" />
-            <p className="text-sm font-bold text-[#181512]">Produk Herbal Tidak Ditemukan</p>
-            <p className="text-xs text-[#78716C] mt-1 max-w-sm">
+          <div className="flex h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-stone-200 bg-white p-6 text-center">
+            <BadgeAlert className="h-10 w-10 text-stone-400 mb-2" />
+            <p className="text-sm font-bold text-stone-900">Produk Herbal Tidak Ditemukan</p>
+            <p className="text-xs text-stone-500 mt-1 max-w-sm">
               Tidak ada produk yang cocok dengan pencarian "{searchQuery}". Coba gunakan kata kunci gejala seperti "asam urat", "kolesterol", "tensi", atau "gula darah".
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 sm:gap-6">
             {filteredProducts.map((product) => {
               const inCartItem = cart.find((i) => i.product.id === product.id)
               return (
@@ -653,19 +657,19 @@ export function CustomerPortalPage() {
         )}
       </main>
 
-      {/* ── STICKY BOTTOM FLOATING CART TRAY (Mobile & Desktop) ── */}
+      {/* ── STICKY BOTTOM FLOATING CART TRAY (Concentric Radius & 44px min touch target) ── */}
       {cart.length > 0 && (
-        <div className="sticky bottom-4 z-40 max-w-lg mx-auto w-full px-4 animate-in slide-in-from-bottom-5 duration-300">
-          <div className="flex items-center justify-between gap-3 rounded-3xl bg-[#181512]/95 p-3.5 sm:p-4 text-white shadow-2xl border border-white/10 backdrop-blur-md">
+        <div className="sticky bottom-4 z-40 max-w-lg mx-auto w-full px-3 sm:px-4 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center justify-between gap-3 rounded-3xl bg-stone-900/95 p-3 sm:p-4 text-white shadow-xl border border-stone-800 backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FF5A2B] text-white font-black text-sm shadow-md">
-                <span className="tabular-nums">{getTotalItems()}</span>
+              <div className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-emerald-600 text-white font-black text-sm shadow-md">
+                <span className="tabular-nums font-mono">{getTotalItems()}</span>
               </div>
               <div>
                 <p className="text-[11px] text-stone-400 font-medium leading-none">
                   Total Pesanan Herbal
                 </p>
-                <p className="text-sm sm:text-base font-black text-white mt-1 tabular-nums">
+                <p className="text-sm sm:text-base font-bold text-amber-300 mt-1 tabular-nums font-mono">
                   {formatRupiah(getSubtotal())}
                 </p>
               </div>
@@ -674,7 +678,7 @@ export function CustomerPortalPage() {
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
-              className="press-tactile flex items-center gap-2 rounded-2xl bg-[#FF5A2B] px-4 sm:px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/30 hover:bg-[#E5481B] active:scale-95 transition"
+              className="press-tactile flex items-center gap-2 min-h-[44px] h-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-4 sm:px-5 text-xs font-bold text-white shadow-md shadow-emerald-700/25 active:scale-95 transition"
             >
               <span>Lihat Keranjang</span>
               <ChevronRight className="h-4 w-4" />
@@ -684,7 +688,7 @@ export function CustomerPortalPage() {
       )}
 
       {/* ── FOOTER ── */}
-      <footer className="mt-12 border-t border-[#EFECE6] bg-white py-6 text-center text-xs text-[#78716C]">
+      <footer className="mt-12 border-t border-stone-200/80 bg-white py-6 text-center text-xs text-stone-500">
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#181512]">QRIS-POS</span>

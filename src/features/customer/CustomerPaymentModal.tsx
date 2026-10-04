@@ -127,19 +127,23 @@ export function CustomerPaymentModal({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg rounded-3xl border border-[#EFECE6] bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-stone-200/80 bg-white shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-250">
+        {/* Mobile Drag Indicator Bar */}
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-stone-300 sm:hidden shrink-0" />
+
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#EFECE6] px-6 py-4 bg-[#FBF9F5]">
+        <div className="flex items-center justify-between border-b border-stone-200/80 px-5 sm:px-6 py-3.5 bg-[#FBF9F5]">
           <div>
-            <h3 className="text-base font-black text-[#181512]">Pilih Metode Pembayaran</h3>
-            <p className="text-xs text-[#78716C]">
-              Total Tagihan: <span className="font-bold text-[#FF5A2B] tabular-nums">{formatRupiah(totalAmount)}</span>
+            <h3 className="text-base font-black text-stone-900">Pilih Metode Pembayaran</h3>
+            <p className="text-xs text-stone-500">
+              Total Tagihan: <span className="font-bold text-emerald-800 tabular-nums font-mono">{formatRupiah(totalAmount)}</span>
             </p>
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#78716C] hover:bg-black/5 hover:text-[#181512] transition"
+            className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
+            aria-label="Tutup Pilihan Pembayaran"
           >
             <X className="h-5 w-5" />
           </button>
@@ -342,12 +346,12 @@ export function CustomerPaymentModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="border-t border-[#EFECE6] bg-[#FDFBF7] p-5">
+        <div className="border-t border-stone-200/80 bg-[#FDFBF7] p-5">
           <button
             type="button"
             onClick={handleVerifyPayment}
             disabled={isVerifying}
-            className="press-tactile flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF5A2B] py-3.5 px-4 text-sm font-bold text-white shadow-md shadow-orange-500/20 hover:bg-[#E5481B] active:scale-[0.98] transition disabled:opacity-50"
+            className="press-tactile flex w-full min-h-[48px] h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3.5 px-4 text-sm font-bold text-white shadow-sm shadow-emerald-700/20 active:scale-[0.98] transition disabled:opacity-50"
           >
             {isVerifying ? (
               <>
