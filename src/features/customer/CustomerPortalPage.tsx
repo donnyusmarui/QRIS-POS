@@ -296,12 +296,12 @@ function ProductCard({
       </div>
 
       {/* ── Action CTA ── */}
-      <div className="mt-3.5 flex items-center gap-1.5">
+      <div className="mt-3.5 space-y-1.5">
         <button
           type="button"
           disabled={isOutOfStock}
           onClick={() => onAddToCart(product)}
-          className={`press-tactile flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2.5 text-xs font-bold transition-all shadow-xs active:scale-95 ${
+          className={`press-tactile flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all shadow-xs active:scale-95 ${
             isOutOfStock
               ? "bg-stone-100 text-[#A8A29E] cursor-not-allowed"
               : inCartItem
@@ -311,7 +311,7 @@ function ProductCard({
         >
           <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
           <span>
-            {inCartItem ? `Tambah (${inCartItem.quantity})` : "+ Beli"}
+            {inCartItem ? `Tambah (${inCartItem.quantity})` : "+ Beli Herbal"}
           </span>
         </button>
 
@@ -319,10 +319,10 @@ function ProductCard({
           type="button"
           onClick={() => onConsultProduct(product)}
           title={`Konsultasi Apoteker seputar khasiat ${product.name}`}
-          className="press-tactile inline-flex items-center justify-center gap-1 rounded-xl py-2.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition active:scale-95 cursor-pointer shrink-0"
+          className="press-tactile flex w-full items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] sm:text-xs font-bold transition active:scale-95 cursor-pointer shadow-2xs"
         >
-          <Bot className="h-3.5 w-3.5 text-emerald-700" />
-          <span className="hidden xl:inline text-[11px]">Tanya RAG</span>
+          <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
+          <span>Tanya Khasiat ke Apoteker</span>
         </button>
       </div>
     </div>
