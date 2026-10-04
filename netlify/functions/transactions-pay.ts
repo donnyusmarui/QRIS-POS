@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 
 const payTransactionSchema = z.object({
   transactionId: z.string(),
+  paymentMethod: z.enum(['qris', 'transfer', 'gopay', 'cash']).optional(),
 });
 
 export default async (req: Request, context: Context) => {
@@ -29,7 +30,7 @@ export default async (req: Request, context: Context) => {
 
   try {
     const body = await req.json();
-    const { transactionId } = payTransactionSchema.parse(body);
+    const { transactionId, paymentMethod } = payTransactionSchema.parse(body);
 
     const db = createDb();
     
@@ -44,7 +45,10 @@ export default async (req: Request, context: Context) => {
     }
 
     await db.update(transactions)
-      .set({ status: 'paid' })
+      .set({
+        status: 'paid',
+        ...(paymentMethod ? { paymentMethod } : {}),
+      })
       .where(eq(transactions.id, transactionId));
 
     return successResponse(null, 'Transaction paid successfully');

@@ -22,6 +22,7 @@ interface CustomerPaymentModalProps {
   totalAmount: number
   onPaymentSuccess: () => void
   onClose: () => void
+  onCancelOrder?: () => void
 }
 
 export function CustomerPaymentModal({
@@ -31,6 +32,7 @@ export function CustomerPaymentModal({
   totalAmount,
   onPaymentSuccess,
   onClose,
+  onCancelOrder,
 }: CustomerPaymentModalProps) {
   const { selectedPayment, setSelectedPayment, selectedBank, setSelectedBank } =
     useCustomerCartStore()
@@ -108,7 +110,10 @@ export function CustomerPaymentModal({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ transactionId }),
+        body: JSON.stringify({
+          transactionId,
+          paymentMethod: selectedPayment,
+        }),
       })
 
       const json = await res.json()
@@ -346,12 +351,12 @@ export function CustomerPaymentModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="border-t border-stone-200/80 bg-[#FDFBF7] p-5">
+        <div className="border-t border-stone-200/80 bg-[#FDFBF7] p-5 space-y-2.5">
           <button
             type="button"
             onClick={handleVerifyPayment}
             disabled={isVerifying}
-            className="press-tactile flex w-full min-h-[48px] h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3.5 px-4 text-sm font-bold text-white shadow-sm shadow-emerald-700/20 active:scale-[0.98] transition disabled:opacity-50"
+            className="press-tactile flex w-full min-h-[48px] h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3.5 px-4 text-sm font-bold text-white shadow-sm shadow-emerald-700/20 active:scale-[0.98] transition disabled:opacity-50 cursor-pointer"
           >
             {isVerifying ? (
               <>
@@ -365,6 +370,21 @@ export function CustomerPaymentModal({
               </>
             )}
           </button>
+
+          {onCancelOrder && (
+            <button
+              type="button"
+              disabled={isVerifying}
+              onClick={() => {
+                if (window.confirm("Batalkan pesanan ini dan kembali ke keranjang belanja?")) {
+                  onCancelOrder()
+                }
+              }}
+              className="press-tactile flex w-full min-h-[40px] items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-stone-500 hover:text-rose-600 hover:bg-rose-50/50 rounded-xl transition cursor-pointer"
+            >
+              <span>Batalkan Pesanan Ini</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

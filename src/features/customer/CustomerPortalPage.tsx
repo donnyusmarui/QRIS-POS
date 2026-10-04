@@ -22,24 +22,29 @@ import {
   Star,
   Info,
   Bot,
+  Clock,
 } from "lucide-react"
 
 // ─── Modal Detail Khasiat & Legalitas Herbal ───
 function HerbalDetailModal({
   product,
+  inCartItem,
   onClose,
   onAddToCart,
   onConsultProduct,
   formatRupiah,
 }: {
   product: Product | null
+  inCartItem?: CartItem
   onClose: () => void
-  onAddToCart: (p: Product) => void
+  onAddToCart: (p: Product) => { success: boolean; message?: string } | void
   onConsultProduct: (p: Product) => void
   formatRupiah: (n: number) => string
 }) {
   if (!product) return null
   const isOutOfStock = product.stock <= 0
+  const isMaxStock = inCartItem ? inCartItem.quantity >= product.stock : false
+  const isBtnDisabled = isOutOfStock || isMaxStock
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200">
@@ -96,8 +101,8 @@ function HerbalDetailModal({
 
           <div className="flex items-center justify-between text-xs text-stone-600 bg-stone-50 p-3.5 rounded-xl border border-stone-200/60">
             <span>Status Ketersediaan:</span>
-            <span className={`font-bold ${isOutOfStock ? "text-rose-600" : "text-emerald-700"}`}>
-              {isOutOfStock ? "Stok Habis" : `Tersedia (${product.stock} kemasan)`}
+            <span className={`font-bold ${isOutOfStock ? "text-rose-600" : isMaxStock ? "text-amber-700" : "text-emerald-700"}`}>
+              {isOutOfStock ? "Stok Habis" : isMaxStock ? `Maksimal di Keranjang (${product.stock})` : `Tersedia (${product.stock} kemasan)`}
             </span>
           </div>
 
@@ -123,15 +128,27 @@ function HerbalDetailModal({
               </button>
               <button
                 type="button"
-                disabled={isOutOfStock}
+                disabled={isBtnDisabled}
                 onClick={() => {
-                  onAddToCart(product)
+                  const res = onAddToCart(product)
+                  if (res && !res.success) {
+                    alert(res.message || "Batas stok maksimal tercapai")
+                    return
+                  }
                   onClose()
                 }}
-                className="min-h-[44px] h-11 flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-700/20 disabled:opacity-50 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                className="min-h-[44px] h-11 flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-100 disabled:text-stone-400 disabled:border disabled:border-stone-200 text-white text-xs font-bold shadow-sm shadow-emerald-700/20 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed active:scale-95"
               >
                 <Plus className="h-4 w-4" />
-                <span>+ Beli</span>
+                <span>
+                  {isOutOfStock
+                    ? "Stok Habis"
+                    : isMaxStock
+                    ? `Maksimal (${inCartItem?.quantity})`
+                    : inCartItem
+                    ? `Tambah (${inCartItem.quantity})`
+                    : "+ Beli"}
+                </span>
               </button>
             </div>
           </div>
@@ -152,7 +169,7 @@ function ProductCard({
 }: {
   product: Product
   inCartItem?: CartItem
-  onAddToCart: (p: Product) => void
+  onAddToCart: (p: Product) => { success: boolean; message?: string } | void
   onViewDetail: (p: Product) => void
   onConsultProduct: (p: Product) => void
   formatRupiah: (n: number) => string
@@ -160,6 +177,8 @@ function ProductCard({
   const [imageLoaded, setImageLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
   const isOutOfStock = product.stock <= 0
+  const isMaxStock = inCartItem ? inCartItem.quantity >= product.stock : false
+  const isBtnDisabled = isOutOfStock || isMaxStock
 
   // Category Badges based on pathology cluster
   const getCategoryBadge = () => {
@@ -302,11 +321,18 @@ function ProductCard({
       <div className="mt-3.5 space-y-2">
         <button
           type="button"
-          disabled={isOutOfStock}
-          onClick={() => onAddToCart(product)}
+          disabled={isBtnDisabled}
+          onClick={() => {
+            const res = onAddToCart(product) as any
+            if (res && !res.success) {
+              alert(res.message || "Batas stok maksimal produk tercapai")
+            }
+          }}
           className={`press-tactile flex w-full min-h-[44px] h-11 items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all shadow-xs active:scale-95 ${
             isOutOfStock
               ? "bg-stone-100 text-stone-400 cursor-not-allowed"
+              : isMaxStock
+              ? "bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed"
               : inCartItem
               ? "bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100"
               : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-700/20"
@@ -314,7 +340,13 @@ function ProductCard({
         >
           <Plus className="h-4 w-4 stroke-[2.5]" />
           <span>
-            {inCartItem ? `Tambah (${inCartItem.quantity})` : "+ Beli Herbal"}
+            {isOutOfStock
+              ? "Stok Habis"
+              : isMaxStock
+              ? `Maksimal (${inCartItem?.quantity})`
+              : inCartItem
+              ? `Tambah (${inCartItem.quantity})`
+              : "+ Beli Herbal"}
           </span>
         </button>
 
@@ -352,6 +384,7 @@ export function CustomerPortalPage() {
   const [activeQrisRefId, setActiveQrisRefId] = useState<string | null>(null)
   const [completedOrderItems, setCompletedOrderItems] = useState<any[]>([])
   const [completedTotalAmount, setCompletedTotalAmount] = useState(0)
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
 
   const {
     cart,
@@ -431,8 +464,22 @@ export function CustomerPortalPage() {
 
   // Handle Checkout from Drawer
   async function handleCheckout() {
-    if (cart.length === 0) return
+    if (cart.length === 0 || isCheckingOut) return
 
+    // Re-use active pending transaction if cart items match previously initiated checkout
+    if (activeTransactionId && completedOrderItems.length === cart.length) {
+      const isSameOrder = cart.every((c, idx) => {
+        const prev = completedOrderItems[idx]
+        return prev && prev.product.id === c.product.id && prev.quantity === c.quantity
+      })
+      if (isSameOrder) {
+        setIsCartOpen(false)
+        setIsPaymentOpen(true)
+        return
+      }
+    }
+
+    setIsCheckingOut(true)
     try {
       const res = await fetch("/.netlify/functions/transactions-create", {
         method: "POST",
@@ -466,6 +513,8 @@ export function CustomerPortalPage() {
       }
     } catch {
       alert("Terjadi kesalahan saat memproses pesanan.")
+    } finally {
+      setIsCheckingOut(false)
     }
   }
 
@@ -538,6 +587,50 @@ export function CustomerPortalPage() {
 
       {/* ── MAIN CONTENT WORKSPACE ── */}
       <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-3.5 sm:px-8 py-5 sm:py-6 space-y-6 sm:space-y-7">
+        {/* ── ACTIVE PENDING TRANSACTION BANNER ── */}
+        {activeTransactionId && !isPaymentOpen && !isReceiptOpen && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 shadow-xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+                <Clock className="h-5 w-5 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-stone-900">
+                  Anda memiliki pesanan yang menunggu pembayaran
+                </p>
+                <p className="text-[11px] sm:text-xs text-stone-600">
+                  Ref: <span className="font-mono font-semibold">{activeQrisRefId || activeTransactionId.slice(0, 8)}</span> • Total:{" "}
+                  <span className="font-bold text-emerald-800 font-mono">{formatRupiah(completedTotalAmount)}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("Batalkan transaksi yang tertunda ini?")) {
+                    setActiveTransactionId(null)
+                    setActiveQrisRefId(null)
+                    setCompletedOrderItems([])
+                  }
+                }}
+                className="flex-1 sm:flex-none min-h-[40px] px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 text-xs font-semibold transition cursor-pointer"
+              >
+                Batalkan
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsPaymentOpen(true)}
+                className="flex-1 sm:flex-none min-h-[40px] px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <QrCode className="h-4 w-4" />
+                <span>Bayar Sekarang</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── APOTEK HERBAL HERO BANNER ── */}
         <div className="rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 via-stone-50/60 to-[#FDFBF7] p-5 sm:p-8 shadow-xs">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -704,6 +797,7 @@ export function CustomerPortalPage() {
       {/* ── MODALS & DRAWERS ── */}
       <HerbalDetailModal
         product={selectedProductDetail}
+        inCartItem={selectedProductDetail ? cart.find((i) => i.product.id === selectedProductDetail.id) : undefined}
         onClose={() => setSelectedProductDetail(null)}
         onAddToCart={addToCart}
         onConsultProduct={handleConsultProduct}
@@ -714,6 +808,7 @@ export function CustomerPortalPage() {
         open={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         onCheckout={handleCheckout}
+        isCheckingOut={isCheckingOut}
       />
 
       <CustomerPaymentModal
@@ -723,6 +818,12 @@ export function CustomerPortalPage() {
         totalAmount={completedTotalAmount}
         onPaymentSuccess={handlePaymentSuccess}
         onClose={() => setIsPaymentOpen(false)}
+        onCancelOrder={() => {
+          setActiveTransactionId(null)
+          setActiveQrisRefId(null)
+          setCompletedOrderItems([])
+          setIsPaymentOpen(false)
+        }}
       />
 
       <CustomerReceiptModal

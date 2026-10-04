@@ -652,15 +652,17 @@ export function CustomerChatbotWidget({
     return () => window.removeEventListener("open-herbal-consultation", handleConsultEvent)
   }, [config.pharmacistName])
 
-  // Jangan render widget jika cart drawer sedang terbuka untuk mencegah tumpang tindih
-  if (isCartOpen) return null
-
   const isLeft = config.widgetPosition === "bottom_left"
   const bottomOffset = config.widgetOffsetY ?? 90
   const sideOffset = config.widgetOffsetX ?? 24
 
   return (
-    <aside aria-label="Widget Konsultasi Herbal & Resep" className="relative z-40">
+    <aside
+      aria-label="Widget Konsultasi Herbal & Resep"
+      className={`relative z-40 transition-opacity duration-200 ${
+        isCartOpen ? "invisible pointer-events-none opacity-0" : "visible opacity-100"
+      }`}
+    >
       {/* ── FLOATING TRIGGER BUTTON ── */}
       {!isOpen && (
         <button

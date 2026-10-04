@@ -11,15 +11,17 @@ import {
   FileText,
   AlertCircle,
   Leaf,
+  Loader2,
 } from "lucide-react"
 
 interface CustomerCartDrawerProps {
   open: boolean
   onClose: () => void
   onCheckout: () => void
+  isCheckingOut?: boolean
 }
 
-export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDrawerProps) {
+export function CustomerCartDrawer({ open, onClose, onCheckout, isCheckingOut = false }: CustomerCartDrawerProps) {
   const {
     cart,
     customerInfo,
@@ -306,11 +308,21 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
 
             <button
               type="button"
+              disabled={isCheckingOut}
               onClick={handleProceedToPayment}
-              className="press-tactile flex w-full min-h-[48px] h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 px-4 text-sm font-bold text-white shadow-sm shadow-emerald-700/20 active:scale-[0.98] transition"
+              className="press-tactile flex w-full min-h-[48px] h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed py-3 px-4 text-sm font-bold text-white shadow-sm shadow-emerald-700/20 active:scale-[0.98] transition cursor-pointer"
             >
-              <span>Lanjut ke Pembayaran</span>
-              <ArrowRight className="h-4 w-4" />
+              {isCheckingOut ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Memproses Pesanan...</span>
+                </>
+              ) : (
+                <>
+                  <span>Lanjut ke Pembayaran</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
             </button>
           </div>
         )}
