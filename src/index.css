@@ -166,4 +166,13 @@
   .bg-espresso-gradient {
     background: linear-gradient(135deg, #1C1917 0%, #2A241F 100%);
   }
+
+  /* Netlify floating badge isolation: keep underneath modals and cart drawer */
+  #netlify-badge,
+  [data-netlify-badge],
+  .netlify-badge,
+  iframe[id*="netlify"] {
+    z-index: 30 !important;
+  }
 }
+

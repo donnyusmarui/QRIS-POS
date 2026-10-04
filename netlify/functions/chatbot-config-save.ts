@@ -41,6 +41,10 @@ export default async (req: Request, _context: Context) => {
     const leadNudgeMessageCount = Number(body.leadNudgeMessageCount ?? 3);
     const leadNudgeTimeMinutes = Number(body.leadNudgeTimeMinutes ?? 2);
     const leadNudgeCooldownMinutes = Number(body.leadNudgeCooldownMinutes ?? 10);
+    const widgetButtonText = body.widgetButtonText?.trim() || 'Konsultasi Apoteker';
+    const widgetPosition = body.widgetPosition === 'bottom_left' ? 'bottom_left' : 'bottom_right';
+    const widgetOffsetY = Math.max(10, Math.min(300, Number(body.widgetOffsetY ?? 90)));
+    const widgetOffsetX = Math.max(10, Math.min(200, Number(body.widgetOffsetX ?? 24)));
 
     const existing = await db
       .select()
@@ -61,6 +65,10 @@ export default async (req: Request, _context: Context) => {
           leadNudgeMessageCount,
           leadNudgeTimeMinutes,
           leadNudgeCooldownMinutes,
+          widgetButtonText,
+          widgetPosition,
+          widgetOffsetY,
+          widgetOffsetX,
           updatedAt: now,
         })
         .where(eq(chatbotConfig.id, 'default'));
@@ -76,6 +84,10 @@ export default async (req: Request, _context: Context) => {
         leadNudgeMessageCount,
         leadNudgeTimeMinutes,
         leadNudgeCooldownMinutes,
+        widgetButtonText,
+        widgetPosition,
+        widgetOffsetY,
+        widgetOffsetX,
         createdAt: now,
         updatedAt: now,
       });
@@ -92,8 +104,12 @@ export default async (req: Request, _context: Context) => {
         leadNudgeMessageCount,
         leadNudgeTimeMinutes,
         leadNudgeCooldownMinutes,
+        widgetButtonText,
+        widgetPosition,
+        widgetOffsetY,
+        widgetOffsetX,
       },
-      'Pengaturan Persona Apoteker & Lead Nudge berhasil disimpan'
+      'Pengaturan Persona Apoteker & Tampilan Widget berhasil disimpan'
     );
   } catch (err: any) {
     console.error('Error saving chatbot config:', err);

@@ -25,6 +25,7 @@ import {
   User,
   HeartHandshake,
   Activity,
+  Leaf,
 } from "lucide-react"
 
 interface SavedModel {
@@ -70,6 +71,10 @@ interface PharmacistPersonaConfig {
   leadNudgeMessageCount: number
   leadNudgeTimeMinutes: number
   leadNudgeCooldownMinutes: number
+  widgetButtonText: string
+  widgetPosition: "bottom_right" | "bottom_left"
+  widgetOffsetY: number
+  widgetOffsetX: number
 }
 
 interface ProviderOption {
@@ -218,6 +223,10 @@ export function AiSettingsPage() {
     leadNudgeMessageCount: 3,
     leadNudgeTimeMinutes: 2,
     leadNudgeCooldownMinutes: 10,
+    widgetButtonText: "Konsultasi Apoteker",
+    widgetPosition: "bottom_right",
+    widgetOffsetY: 90,
+    widgetOffsetX: 24,
   })
   const [isLoadingPersona, setIsLoadingPersona] = useState(false)
   const [isSavingPersona, setIsSavingPersona] = useState(false)
@@ -1159,6 +1168,73 @@ export function AiSettingsPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Card 3: Tampilan & Posisi Tombol Widget Chatbot */}
+              <div className="bg-white rounded-3xl border border-stone-200 p-5 shadow-xs space-y-4">
+                <div className="border-b border-stone-100 pb-3">
+                  <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-emerald-700" />
+                    Tampilan &amp; Posisi Tombol Widget Chatbot
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    Sesuaikan label teks tombol pemicu dan posisinya di layar agar tidak tertutup badge Netlify atau keranjang.
+                  </p>
+                </div>
+
+                <div className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block text-stone-700 font-semibold mb-1">Teks Label Tombol Chatbot</label>
+                    <input
+                      type="text"
+                      value={personaConfig.widgetButtonText}
+                      onChange={(e) => setPersonaConfig({ ...personaConfig, widgetButtonText: e.target.value })}
+                      placeholder="Contoh: Konsultasi Apoteker, Tanya Resep Herbal"
+                      className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-800 focus:outline-emerald-600 focus:bg-white"
+                    />
+                    <p className="text-[11px] text-stone-400 mt-1">
+                      Teks ini ditampilkan pada pill tombol mengambang di pojok layar customer.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-stone-700 font-semibold mb-1">Posisi Layar</label>
+                      <select
+                        value={personaConfig.widgetPosition}
+                        onChange={(e) => setPersonaConfig({ ...personaConfig, widgetPosition: e.target.value as any })}
+                        className="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-2 text-stone-800 focus:outline-emerald-600"
+                      >
+                        <option value="bottom_right">Pojok Kanan Bawah (Default)</option>
+                        <option value="bottom_left">Pojok Kiri Bawah</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-stone-700 font-semibold mb-1">Jarak Bawah (px)</label>
+                      <input
+                        type="number"
+                        min={10}
+                        max={300}
+                        value={personaConfig.widgetOffsetY}
+                        onChange={(e) => setPersonaConfig({ ...personaConfig, widgetOffsetY: Number(e.target.value) })}
+                        className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-800 focus:outline-emerald-600"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-0.5">Min. 80-90px agar aman dari Netlify</p>
+                    </div>
+                    <div>
+                      <label className="block text-stone-700 font-semibold mb-1">Jarak Sisi Samping (px)</label>
+                      <input
+                        type="number"
+                        min={10}
+                        max={200}
+                        value={personaConfig.widgetOffsetX}
+                        onChange={(e) => setPersonaConfig({ ...personaConfig, widgetOffsetX: Number(e.target.value) })}
+                        className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-stone-800 focus:outline-emerald-600"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-0.5">Jarak dari tepi kiri/kanan</p>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="pt-3 border-t border-stone-100 flex justify-end">
                   <button
@@ -1168,7 +1244,7 @@ export function AiSettingsPage() {
                     className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
                   >
                     {isSavingPersona ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    <span>Simpan Pengaturan Persona &amp; Nudge</span>
+                    <span>Simpan Pengaturan Persona, Nudge, &amp; Tampilan</span>
                   </button>
                 </div>
               </div>
@@ -1184,6 +1260,27 @@ export function AiSettingsPage() {
                 <p className="text-[11px] text-stone-500">
                   Berikut tampilan nyata persona dan header yang dilihat oleh customer.
                 </p>
+
+                {/* Mock Floating Trigger Pill */}
+                <div className="p-3 bg-stone-50 rounded-2xl border border-stone-200 space-y-1.5">
+                  <p className="text-[11px] font-semibold text-stone-600">Simulasi Tombol Mengambang:</p>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 px-3.5 py-2 text-white shadow-md text-xs">
+                    <div className="h-6 w-6 rounded-full overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
+                      {personaConfig.pharmacistAvatarUrl ? (
+                        <img src={personaConfig.pharmacistAvatarUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Leaf className="h-3.5 w-3.5 text-emerald-200" />
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold leading-tight text-[11px]">{personaConfig.widgetButtonText || "Konsultasi Apoteker"}</p>
+                      <p className="text-[9px] text-emerald-200">{personaConfig.pharmacistName}</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-stone-400">
+                    Posisi: {personaConfig.widgetPosition === "bottom_left" ? "Kiri Bawah" : "Kanan Bawah"} (Bawah: {personaConfig.widgetOffsetY}px, Samping: {personaConfig.widgetOffsetX}px)
+                  </p>
+                </div>
 
                 {/* Mock Chat Header */}
                 <div className="rounded-2xl overflow-hidden border border-stone-200 shadow-md">

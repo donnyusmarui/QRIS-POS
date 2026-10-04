@@ -62,7 +62,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout }: CustomerCartDr
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex justify-end bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200">
       <div className="flex h-full w-full max-w-md flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-250">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#EFECE6] px-5 py-4 bg-[#FBF9F5]">

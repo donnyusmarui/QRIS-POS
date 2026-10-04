@@ -21,6 +21,7 @@ import {
   Loader2,
   Star,
   Info,
+  Bot,
 } from "lucide-react"
 
 // ─── Modal Detail Khasiat & Legalitas Herbal ───
@@ -28,11 +29,13 @@ function HerbalDetailModal({
   product,
   onClose,
   onAddToCart,
+  onConsultProduct,
   formatRupiah,
 }: {
   product: Product | null
   onClose: () => void
   onAddToCart: (p: Product) => void
+  onConsultProduct: (p: Product) => void
   formatRupiah: (n: number) => string
 }) {
   if (!product) return null
@@ -95,26 +98,39 @@ function HerbalDetailModal({
             </span>
           </div>
 
-          <div className="pt-2 flex gap-3">
+          <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
             <button
               type="button"
-              onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-xl border border-[#EFECE6] text-xs font-bold text-[#78716C] hover:bg-stone-100 transition"
-            >
-              Tutup
-            </button>
-            <button
-              type="button"
-              disabled={isOutOfStock}
               onClick={() => {
-                onAddToCart(product)
                 onClose()
+                onConsultProduct(product)
               }}
-              className="flex-2 py-3 px-4 rounded-xl bg-[#FF5A2B] text-white text-xs font-bold shadow-md shadow-orange-500/25 hover:bg-[#E5481B] disabled:opacity-50 transition flex items-center justify-center gap-2"
+              className="py-3 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
             >
-              <Plus className="h-4 w-4" />
-              <span>Tambah ke Keranjang</span>
+              <Bot className="h-4 w-4 text-emerald-700" />
+              <span>Tanya Apoteker Khasiat Produk Ini</span>
             </button>
+            <div className="flex gap-2 flex-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 px-3 rounded-xl border border-[#EFECE6] text-xs font-bold text-[#78716C] hover:bg-stone-100 transition cursor-pointer"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                disabled={isOutOfStock}
+                onClick={() => {
+                  onAddToCart(product)
+                  onClose()
+                }}
+                className="flex-1 py-3 px-3 rounded-xl bg-[#FF5A2B] text-white text-xs font-bold shadow-md shadow-orange-500/25 hover:bg-[#E5481B] disabled:opacity-50 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Plus className="h-4 w-4" />
+                <span>+ Beli</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -128,12 +144,14 @@ function ProductCard({
   inCartItem,
   onAddToCart,
   onViewDetail,
+  onConsultProduct,
   formatRupiah,
 }: {
   product: Product
   inCartItem?: CartItem
   onAddToCart: (p: Product) => void
   onViewDetail: (p: Product) => void
+  onConsultProduct: (p: Product) => void
   formatRupiah: (n: number) => string
 }) {
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -278,12 +296,12 @@ function ProductCard({
       </div>
 
       {/* ── Action CTA ── */}
-      <div className="mt-3.5">
+      <div className="mt-3.5 flex items-center gap-1.5">
         <button
           type="button"
           disabled={isOutOfStock}
           onClick={() => onAddToCart(product)}
-          className={`press-tactile flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 px-3 text-xs font-bold transition-all shadow-xs active:scale-95 ${
+          className={`press-tactile flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 px-2.5 text-xs font-bold transition-all shadow-xs active:scale-95 ${
             isOutOfStock
               ? "bg-stone-100 text-[#A8A29E] cursor-not-allowed"
               : inCartItem
@@ -293,8 +311,18 @@ function ProductCard({
         >
           <Plus className="h-3.5 w-3.5 stroke-[2.5]" />
           <span>
-            {inCartItem ? `Tambah (${inCartItem.quantity})` : "+ Beli Herbal"}
+            {inCartItem ? `Tambah (${inCartItem.quantity})` : "+ Beli"}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onConsultProduct(product)}
+          title={`Konsultasi Apoteker seputar khasiat ${product.name}`}
+          className="press-tactile inline-flex items-center justify-center gap-1 rounded-xl py-2.5 px-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition active:scale-95 cursor-pointer shrink-0"
+        >
+          <Bot className="h-3.5 w-3.5 text-emerald-700" />
+          <span className="hidden xl:inline text-[11px]">Tanya RAG</span>
         </button>
       </div>
     </div>
@@ -309,6 +337,12 @@ export function CustomerPortalPage() {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)
   const [isReceiptOpen, setIsReceiptOpen] = useState(false)
   const [selectedProductDetail, setSelectedProductDetail] = useState<Product | null>(null)
+  const [productToConsult, setProductToConsult] = useState<Product | null>(null)
+
+  const handleConsultProduct = useCallback((product: Product) => {
+    setIsCartOpen(false)
+    setProductToConsult(product)
+  }, [])
 
   // Current active transaction state
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null)
@@ -610,6 +644,7 @@ export function CustomerPortalPage() {
                   inCartItem={inCartItem}
                   onAddToCart={addToCart}
                   onViewDetail={(p) => setSelectedProductDetail(p)}
+                  onConsultProduct={handleConsultProduct}
                   formatRupiah={formatRupiah}
                 />
               )
@@ -667,6 +702,7 @@ export function CustomerPortalPage() {
         product={selectedProductDetail}
         onClose={() => setSelectedProductDetail(null)}
         onAddToCart={addToCart}
+        onConsultProduct={handleConsultProduct}
         formatRupiah={formatRupiah}
       />
 
@@ -700,7 +736,12 @@ export function CustomerPortalPage() {
       />
 
       {/* ── FLOATING RAG HERBAL CONSULTANT CHATBOT ── */}
-      <CustomerChatbotWidget formatRupiah={formatRupiah} />
+      <CustomerChatbotWidget
+        formatRupiah={formatRupiah}
+        isCartOpen={isCartOpen}
+        productToConsult={productToConsult}
+        onClearConsultProduct={() => setProductToConsult(null)}
+      />
     </div>
   )
 }

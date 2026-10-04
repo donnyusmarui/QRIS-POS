@@ -362,6 +362,10 @@ export const pgChatbotConfig = pgTable("chatbot_config", {
   leadNudgeMessageCount: pgInteger("lead_nudge_message_count").notNull().default(3),
   leadNudgeTimeMinutes: pgInteger("lead_nudge_time_minutes").notNull().default(2),
   leadNudgeCooldownMinutes: pgInteger("lead_nudge_cooldown_minutes").notNull().default(10),
+  widgetButtonText: pgText("widget_button_text").notNull().default("Konsultasi Apoteker"),
+  widgetPosition: pgText("widget_position").notNull().default("bottom_right"),
+  widgetOffsetY: pgInteger("widget_offset_y").notNull().default(90),
+  widgetOffsetX: pgInteger("widget_offset_x").notNull().default(24),
   createdAt: pgText("created_at").notNull(),
   updatedAt: pgText("updated_at").notNull(),
 })
@@ -436,6 +440,10 @@ export const sqliteChatbotConfig = sqliteTable("chatbot_config", {
   leadNudgeMessageCount: sqInteger("lead_nudge_message_count").notNull().default(3),
   leadNudgeTimeMinutes: sqInteger("lead_nudge_time_minutes").notNull().default(2),
   leadNudgeCooldownMinutes: sqInteger("lead_nudge_cooldown_minutes").notNull().default(10),
+  widgetButtonText: sqText("widget_button_text").notNull().default("Konsultasi Apoteker"),
+  widgetPosition: sqText("widget_position").notNull().default("bottom_right"),
+  widgetOffsetY: sqInteger("widget_offset_y").notNull().default(90),
+  widgetOffsetX: sqInteger("widget_offset_x").notNull().default(24),
   createdAt: sqText("created_at").notNull(),
   updatedAt: sqText("updated_at").notNull(),
 })

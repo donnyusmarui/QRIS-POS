@@ -56,6 +56,10 @@ interface PharmacistConfig {
   leadNudgeMessageCount: number
   leadNudgeTimeMinutes: number
   leadNudgeCooldownMinutes: number
+  widgetButtonText: string
+  widgetPosition: "bottom_right" | "bottom_left"
+  widgetOffsetY: number
+  widgetOffsetX: number
 }
 
 interface SymptomOptionItem {
@@ -82,6 +86,10 @@ const DEFAULT_PHARMACIST_CONFIG: PharmacistConfig = {
   leadNudgeMessageCount: 3,
   leadNudgeTimeMinutes: 2,
   leadNudgeCooldownMinutes: 10,
+  widgetButtonText: "Konsultasi Apoteker",
+  widgetPosition: "bottom_right",
+  widgetOffsetY: 90,
+  widgetOffsetX: 24,
 }
 
 const DEFAULT_SYMPTOMS: SymptomOptionItem[] = [
@@ -209,11 +217,19 @@ function TypedText({ text, onDone, onTick }: { text: string; onDone: () => void;
   return <RichText text={text.slice(0, n)} />
 }
 
+export interface CustomerChatbotWidgetProps {
+  formatRupiah: (n: number) => string
+  isCartOpen?: boolean
+  productToConsult?: Product | null
+  onClearConsultProduct?: () => void
+}
+
 export function CustomerChatbotWidget({
   formatRupiah,
-}: {
-  formatRupiah: (n: number) => string
-}) {
+  isCartOpen = false,
+  productToConsult = null,
+  onClearConsultProduct,
+}: CustomerChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [inputMessage, setInputMessage] = useState("")
@@ -607,8 +623,44 @@ export function CustomerChatbotWidget({
 
   const handedOff = status === "waiting_admin" || status === "admin"
 
+  // ── TRIGGER KONSULTASI PRODUK SPESIFIK ──
+  useEffect(() => {
+    if (productToConsult) {
+      setIsOpen(true)
+      setIsMinimized(false)
+      chatOpenTimeRef.current = Date.now()
+      const prompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${productToConsult.name}* (SKU: ${productToConsult.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
+      handleSendMessage(prompt)
+      if (onClearConsultProduct) onClearConsultProduct()
+    }
+  }, [productToConsult, config.pharmacistName])
+
+  useEffect(() => {
+    const handleConsultEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ product: Product }>
+      const p = customEvent.detail?.product
+      if (!p) return
+
+      setIsOpen(true)
+      setIsMinimized(false)
+      chatOpenTimeRef.current = Date.now()
+      const prompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${p.name}* (SKU: ${p.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
+      handleSendMessage(prompt)
+    }
+
+    window.addEventListener("open-herbal-consultation", handleConsultEvent)
+    return () => window.removeEventListener("open-herbal-consultation", handleConsultEvent)
+  }, [config.pharmacistName])
+
+  // Jangan render widget jika cart drawer sedang terbuka untuk mencegah tumpang tindih
+  if (isCartOpen) return null
+
+  const isLeft = config.widgetPosition === "bottom_left"
+  const bottomOffset = config.widgetOffsetY ?? 90
+  const sideOffset = config.widgetOffsetX ?? 24
+
   return (
-    <aside aria-label="Widget Konsultasi Herbal & Resep" className="relative z-50">
+    <aside aria-label="Widget Konsultasi Herbal & Resep" className="relative z-40">
       {/* ── FLOATING TRIGGER BUTTON ── */}
       {!isOpen && (
         <button
@@ -619,8 +671,12 @@ export function CustomerChatbotWidget({
             chatOpenTimeRef.current = Date.now()
             if (!customerLead) setShowOnboarding(true)
           }}
-          className="fixed bottom-6 right-6 flex items-center gap-2.5 rounded-full bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 px-4 py-3.5 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 ring-2 ring-emerald-600/30 group cursor-pointer"
-          aria-label="Konsultasi Herbal dengan Apoteker"
+          style={{
+            bottom: `${bottomOffset}px`,
+            [isLeft ? "left" : "right"]: `${sideOffset}px`,
+          }}
+          className="fixed z-40 flex items-center gap-2.5 rounded-full bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 px-4 py-3.5 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 ring-2 ring-emerald-600/30 group cursor-pointer"
+          aria-label={config.widgetButtonText || "Konsultasi Apoteker"}
         >
           <div className="relative">
             <div className="h-8 w-8 rounded-full overflow-hidden bg-white/20 ring-1 ring-white/40 flex items-center justify-center">
@@ -634,7 +690,7 @@ export function CustomerChatbotWidget({
           </div>
           <div className="text-left hidden sm:block pr-1">
             <p className="text-xs font-bold leading-tight flex items-center gap-1.5">
-              <span>Konsultasi Apoteker</span>
+              <span>{config.widgetButtonText || "Konsultasi Apoteker"}</span>
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </p>
             <p className="text-[10px] text-emerald-200">{config.pharmacistName}</p>
@@ -647,10 +703,20 @@ export function CustomerChatbotWidget({
         <div
           role="region"
           aria-label="Jendela Chatbot Herbal"
-          className={`fixed z-50 transition-all duration-300 ${
+          style={
             isMinimized
-              ? "right-6 bottom-6 w-80 rounded-2xl bg-white shadow-xl border border-stone-200 overflow-hidden"
-              : "inset-x-2 bottom-2 sm:inset-x-auto sm:right-6 sm:bottom-6 sm:w-[460px] max-h-[90vh] sm:max-h-[680px] h-[85vh] sm:h-[640px] rounded-3xl bg-white shadow-2xl border border-stone-200 flex flex-col overflow-hidden ring-1 ring-black/5"
+              ? {
+                  bottom: `${bottomOffset}px`,
+                  [isLeft ? "left" : "right"]: `${sideOffset}px`,
+                }
+              : undefined
+          }
+          className={`fixed z-40 transition-all duration-300 ${
+            isMinimized
+              ? "w-80 rounded-2xl bg-white shadow-xl border border-stone-200 overflow-hidden"
+              : `inset-x-2 bottom-2 sm:inset-x-auto ${
+                  isLeft ? "sm:left-6" : "sm:right-6"
+                } sm:bottom-6 sm:w-[460px] max-h-[90vh] sm:max-h-[680px] h-[85vh] sm:h-[640px] rounded-3xl bg-white shadow-2xl border border-stone-200 flex flex-col overflow-hidden ring-1 ring-black/5`
           }`}
         >
           {/* Header */}

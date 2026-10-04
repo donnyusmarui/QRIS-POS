@@ -15,6 +15,10 @@ const DEFAULT_CONFIG = {
   leadNudgeMessageCount: 3,
   leadNudgeTimeMinutes: 2,
   leadNudgeCooldownMinutes: 10,
+  widgetButtonText: 'Konsultasi Apoteker',
+  widgetPosition: 'bottom_right',
+  widgetOffsetY: 90,
+  widgetOffsetX: 24,
 };
 
 export default async (req: Request, _context: Context) => {
@@ -46,6 +50,10 @@ export default async (req: Request, _context: Context) => {
       leadNudgeMessageCount: Number(row.leadNudgeMessageCount ?? 3),
       leadNudgeTimeMinutes: Number(row.leadNudgeTimeMinutes ?? 2),
       leadNudgeCooldownMinutes: Number(row.leadNudgeCooldownMinutes ?? 10),
+      widgetButtonText: row.widgetButtonText || DEFAULT_CONFIG.widgetButtonText,
+      widgetPosition: row.widgetPosition || DEFAULT_CONFIG.widgetPosition,
+      widgetOffsetY: Number(row.widgetOffsetY ?? DEFAULT_CONFIG.widgetOffsetY),
+      widgetOffsetX: Number(row.widgetOffsetX ?? DEFAULT_CONFIG.widgetOffsetX),
     });
   } catch (err: any) {
     console.error('Error fetching chatbot config:', err);
