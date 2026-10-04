@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { apiFetch } from "@/lib/api"
 import type { Product } from "@/types"
 import {
@@ -34,6 +34,11 @@ interface ChatSessionSummary {
   adminNotes?: string
   isArchived: boolean
   symptoms: string[]
+  source?: "product" | "rag_main"
+  productId?: string | null
+  productName?: string | null
+  productSku?: string | null
+  productCategory?: string | null
   createdAt: string
   updatedAt: string
   lastMessage: string
@@ -60,6 +65,12 @@ interface ChatSessionDetail {
     adminNotes?: string | null
     isArchived?: boolean
     symptomsJson?: string | null
+    source?: "product" | "rag_main"
+    productId?: string | null
+    productName?: string | null
+    productSku?: string | null
+    productCategory?: string | null
+    symptoms?: string[]
     createdAt: string
     updatedAt: string
   }
@@ -118,10 +129,33 @@ export function ChatInboxPage() {
   // Filter States
   const [searchQuery, setSearchQuery] = useState("")
   const [filterLeadStatus, setFilterLeadStatus] = useState<string>("all")
+  const [filterSource, setFilterSource] = useState<string>("all")
+  const [filterCategory, setFilterCategory] = useState<string>("all")
+  const [filterProductId, setFilterProductId] = useState<string>("all")
   const [filterDate, setFilterDate] = useState<string>("")
   const [filterMonth, setFilterMonth] = useState<string>("")
   const [filterTimeSlot, setFilterTimeSlot] = useState<string>("all")
   const [showArchived, setShowArchived] = useState<boolean>(false)
+
+  // Products list for dropdown filter
+  const [productsList, setProductsList] = useState<Product[]>([])
+
+  useEffect(() => {
+    apiFetch<Product[]>("products-list?pageSize=100")
+      .then((res) => {
+        const prods = (res.data as any)?.items || res.data || []
+        setProductsList(Array.isArray(prods) ? prods : [])
+      })
+      .catch(() => {})
+  }, [])
+
+  const productCategories = useMemo(() => {
+    const set = new Set<string>()
+    productsList.forEach((p) => {
+      if (p.category) set.add(p.category)
+    })
+    return Array.from(set)
+  }, [productsList])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -136,6 +170,9 @@ export function ChatInboxPage() {
       const q = new URLSearchParams()
       if (searchQuery) q.set("search", searchQuery)
       if (filterLeadStatus !== "all") q.set("leadStatus", filterLeadStatus)
+      if (filterSource !== "all") q.set("source", filterSource)
+      if (filterCategory !== "all") q.set("category", filterCategory)
+      if (filterProductId !== "all") q.set("productId", filterProductId)
       if (filterDate) q.set("date", filterDate)
       if (filterMonth) q.set("month", filterMonth)
       if (filterTimeSlot !== "all") q.set("timeSlot", filterTimeSlot)
@@ -177,7 +214,7 @@ export function ChatInboxPage() {
   useEffect(() => {
     loadSessions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterLeadStatus, filterDate, filterMonth, filterTimeSlot, showArchived])
+  }, [searchQuery, filterLeadStatus, filterSource, filterCategory, filterProductId, filterDate, filterMonth, filterTimeSlot, showArchived])
 
   // Auto poll list every 6s
   useEffect(() => {
@@ -186,7 +223,7 @@ export function ChatInboxPage() {
     }, 6000)
     return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filterLeadStatus, filterDate, filterMonth, filterTimeSlot, showArchived, selectedId])
+  }, [searchQuery, filterLeadStatus, filterSource, filterCategory, filterProductId, filterDate, filterMonth, filterTimeSlot, showArchived, selectedId])
 
   // Load detail whenever selectedId changes
   useEffect(() => {
@@ -335,9 +372,16 @@ export function ChatInboxPage() {
     : null
 
   let activeSymptoms: string[] = []
-  if (activeCustomer?.symptomsJson) {
+  if (activeCustomer?.symptoms && Array.isArray(activeCustomer.symptoms)) {
+    activeSymptoms = activeCustomer.symptoms
+  } else if (activeCustomer?.symptomsJson) {
     try {
-      activeSymptoms = JSON.parse(activeCustomer.symptomsJson)
+      const parsed = JSON.parse(activeCustomer.symptomsJson)
+      if (Array.isArray(parsed)) {
+        activeSymptoms = parsed
+      } else if (parsed && Array.isArray(parsed.symptoms)) {
+        activeSymptoms = parsed.symptoms
+      }
     } catch {
       activeSymptoms = []
     }
@@ -399,8 +443,8 @@ export function ChatInboxPage() {
       </div>
 
       {/* ── FILTER TOOLBAR ── */}
-      <div className="bg-white rounded-2xl border border-stone-200 p-3.5 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+      <div className="bg-white rounded-2xl border border-stone-200 p-3.5 shadow-xs space-y-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {/* Search Box */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-stone-400" />
@@ -408,11 +452,59 @@ export function ChatInboxPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama, WhatsApp, keluhan..."
+              placeholder="Cari nama, WA, produk, SKU..."
               className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:bg-white focus:outline-emerald-600"
             />
           </div>
 
+          {/* Filter Sumber Chat */}
+          <div className="relative">
+            <select
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-700 focus:bg-white focus:outline-emerald-600 cursor-pointer font-medium"
+            >
+              <option value="all">Semua Sumber Chat (RAG &amp; Produk)</option>
+              <option value="product">🌿 Chat Produk Spesifik</option>
+              <option value="rag_main">🤖 RAG Chatbot Utama</option>
+            </select>
+          </div>
+
+          {/* Filter Kategori Produk */}
+          <div className="relative">
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-700 focus:bg-white focus:outline-emerald-600 cursor-pointer"
+            >
+              <option value="all">Semua Kategori Produk</option>
+              {productCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  🏷️ {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter Produk Spesifik */}
+          <div className="relative">
+            <select
+              value={filterProductId}
+              onChange={(e) => setFilterProductId(e.target.value)}
+              className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3 py-1.5 text-xs text-stone-700 focus:bg-white focus:outline-emerald-600 cursor-pointer truncate"
+            >
+              <option value="all">Semua Produk Herbal</option>
+              {productsList.map((p) => (
+                <option key={p.id} value={p.id}>
+                  📦 {p.name} ({p.sku})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Baris Kedua Filter: Status Prospek, Tanggal, Bulan, Jam */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 border-t border-stone-100">
           {/* Filter Status Prospek */}
           <div className="relative">
             <select
@@ -471,7 +563,14 @@ export function ChatInboxPage() {
           </div>
         </div>
 
-        {(searchQuery || filterLeadStatus !== "all" || filterDate || filterMonth || filterTimeSlot !== "all") && (
+        {(searchQuery ||
+          filterLeadStatus !== "all" ||
+          filterSource !== "all" ||
+          filterCategory !== "all" ||
+          filterProductId !== "all" ||
+          filterDate ||
+          filterMonth ||
+          filterTimeSlot !== "all") && (
           <div className="flex items-center justify-between text-xs text-stone-500 pt-1 border-t border-stone-100">
             <span>Menampilkan hasil terfilter</span>
             <button
@@ -479,11 +578,14 @@ export function ChatInboxPage() {
               onClick={() => {
                 setSearchQuery("")
                 setFilterLeadStatus("all")
+                setFilterSource("all")
+                setFilterCategory("all")
+                setFilterProductId("all")
                 setFilterDate("")
                 setFilterMonth("")
                 setFilterTimeSlot("all")
               }}
-              className="text-emerald-700 hover:text-emerald-900 font-semibold"
+              className="text-emerald-700 hover:text-emerald-900 font-semibold cursor-pointer"
             >
               Reset Filter
             </button>
@@ -573,8 +675,20 @@ export function ChatInboxPage() {
                       </div>
                     )}
 
-                    {/* Badge Prospek */}
+                    {/* Badge Sumber & Prospek */}
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      {s.source === "product" || s.productName ? (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                          <span>🌿</span>
+                          <span className="truncate max-w-[110px]">{s.productName || s.productSku || "Produk"}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 flex items-center gap-1">
+                          <span>🤖</span>
+                          <span>RAG Utama</span>
+                        </span>
+                      )}
+
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${badge.bg} ${badge.text} ${badge.border}`}
                       >
@@ -723,6 +837,47 @@ export function ChatInboxPage() {
                   </div>
                 )}
               </div>
+
+              {/* ── CARD PRODUK KONSULTASI (Jika chat bersumber dari produk tertentu) ── */}
+              {(activeCustomer?.productName || activeCustomer?.productSku) && (
+                <div className="mx-4 mt-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 flex items-center justify-between gap-3 shadow-2xs shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-9 w-9 rounded-xl bg-white border border-emerald-300 text-emerald-700 flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
+                      🌿
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-stone-900 truncate">
+                          {activeCustomer.productName || "Produk Herbal"}
+                        </span>
+                        {activeCustomer.productSku && (
+                          <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-white text-stone-600 border border-stone-200">
+                            SKU: {activeCustomer.productSku}
+                          </span>
+                        )}
+                        {activeCustomer.productCategory && (
+                          <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                            {activeCustomer.productCategory}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-stone-500 mt-0.5">
+                        Pelanggan memulai konsultasi dari tombol chat spesifik produk ini di katalog herbal.
+                      </p>
+                    </div>
+                  </div>
+                  {activeCustomer.productId && (
+                    <a
+                      href={`/?consultProduct=${activeCustomer.productId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white hover:bg-emerald-100/50 border border-emerald-300 px-3 py-1.5 rounded-xl transition"
+                    >
+                      Buka di Katalog ↗
+                    </a>
+                  )}
+                </div>
+              )}
 
               {/* Chat Stream Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-stone-50/50">

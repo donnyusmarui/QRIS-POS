@@ -11,6 +11,11 @@ interface ChatRequest {
   customerName?: string;
   customerPhone?: string;
   symptoms?: string[];
+  source?: 'rag_main' | 'product';
+  productId?: string;
+  productName?: string;
+  productSku?: string;
+  productCategory?: string;
 }
 
 interface ProductItem {
@@ -453,6 +458,14 @@ export default async (req: Request, context: Context) => {
     }
     if (!session) {
       const t = nowIso();
+      const meta = {
+        symptoms: body.symptoms || [],
+        source: body.source || (body.productId ? 'product' : 'rag_main'),
+        productId: body.productId || null,
+        productName: body.productName || null,
+        productSku: body.productSku || null,
+        productCategory: body.productCategory || null,
+      };
       session = {
         id: `chat_${crypto.randomUUID()}`,
         status: 'ai',
@@ -463,7 +476,7 @@ export default async (req: Request, context: Context) => {
         leadStatus: 'general_inquiry',
         adminNotes: null,
         isArchived: false,
-        symptomsJson: body.symptoms && body.symptoms.length > 0 ? JSON.stringify(body.symptoms) : null,
+        symptomsJson: JSON.stringify(meta),
         createdAt: t,
         updatedAt: t
       };
@@ -473,7 +486,31 @@ export default async (req: Request, context: Context) => {
       const leadPatch: Record<string, any> = {};
       if (body.customerName && !session.customerName) leadPatch.customerName = body.customerName.trim();
       if (body.customerPhone && !session.customerPhone) leadPatch.customerPhone = body.customerPhone.trim();
-      if (body.symptoms && body.symptoms.length > 0) leadPatch.symptomsJson = JSON.stringify(body.symptoms);
+      
+      let currentMeta: any = { symptoms: [] };
+      try {
+        const parsed = JSON.parse(session.symptomsJson || '{}');
+        if (Array.isArray(parsed)) currentMeta = { symptoms: parsed, source: 'rag_main' };
+        else if (parsed && typeof parsed === 'object') currentMeta = parsed;
+      } catch {}
+
+      let metaChanged = false;
+      if (body.symptoms && body.symptoms.length > 0) {
+        currentMeta.symptoms = body.symptoms;
+        metaChanged = true;
+      }
+      if (body.productId && !currentMeta.productId) {
+        currentMeta.source = 'product';
+        currentMeta.productId = body.productId;
+        currentMeta.productName = body.productName || null;
+        currentMeta.productSku = body.productSku || null;
+        currentMeta.productCategory = body.productCategory || null;
+        metaChanged = true;
+      }
+      if (metaChanged) {
+        leadPatch.symptomsJson = JSON.stringify(currentMeta);
+      }
+
       if (Object.keys(leadPatch).length > 0) {
         await db.update(chatSessions).set({ ...leadPatch, updatedAt: nowIso() }).where(eq(chatSessions.id, session.id));
         session = { ...session, ...leadPatch };

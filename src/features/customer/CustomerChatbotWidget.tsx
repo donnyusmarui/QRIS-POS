@@ -221,6 +221,7 @@ export interface CustomerChatbotWidgetProps {
   formatRupiah: (n: number) => string
   isCartOpen?: boolean
   productToConsult?: Product | null
+  customPromptOverride?: string
   onClearConsultProduct?: () => void
 }
 
@@ -228,6 +229,7 @@ export function CustomerChatbotWidget({
   formatRupiah,
   isCartOpen = false,
   productToConsult = null,
+  customPromptOverride,
   onClearConsultProduct,
 }: CustomerChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -522,7 +524,11 @@ export function CustomerChatbotWidget({
     handleSendMessage(text, selectedSymptoms)
   }
 
-  const handleSendMessage = async (textToSend?: string, customSymptoms?: string[]) => {
+  const handleSendMessage = async (
+    textToSend?: string,
+    customSymptoms?: string[],
+    targetProduct?: Product | null
+  ) => {
     const message = (textToSend || inputMessage).trim()
     if (!message || isTyping) return
 
@@ -540,6 +546,8 @@ export function CustomerChatbotWidget({
     const currentUserMsgs = messages.filter((m) => m.sender === "user").length + 1
     checkMessageCountNudge(currentUserMsgs)
 
+    const activeProd = targetProduct !== undefined ? targetProduct : productToConsult
+
     try {
       const res = await fetch("/api/consultation-chat", {
         method: "POST",
@@ -550,6 +558,11 @@ export function CustomerChatbotWidget({
           customerName: customerLead?.name || undefined,
           customerPhone: customerLead?.phone || undefined,
           symptoms: customSymptoms || (selectedSymptoms.length > 0 ? selectedSymptoms : undefined),
+          source: activeProd ? "product" : "rag_main",
+          productId: activeProd?.id,
+          productName: activeProd?.name,
+          productSku: activeProd?.sku,
+          productCategory: activeProd?.category,
         }),
       })
       const json = await res.json()
@@ -629,23 +642,29 @@ export function CustomerChatbotWidget({
       setIsOpen(true)
       setIsMinimized(false)
       chatOpenTimeRef.current = Date.now()
-      const prompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${productToConsult.name}* (SKU: ${productToConsult.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
-      handleSendMessage(prompt)
+      const defaultPrompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${productToConsult.name}* (SKU: ${productToConsult.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
+      const prompt = customPromptOverride
+        ? customPromptOverride.replace(/{product}/gi, productToConsult.name)
+        : defaultPrompt
+      handleSendMessage(prompt, undefined, productToConsult)
       if (onClearConsultProduct) onClearConsultProduct()
     }
-  }, [productToConsult, config.pharmacistName])
+  }, [productToConsult, customPromptOverride, config.pharmacistName])
 
   useEffect(() => {
     const handleConsultEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ product: Product }>
+      const customEvent = e as CustomEvent<{ product: Product; prompt?: string }>
       const p = customEvent.detail?.product
       if (!p) return
 
       setIsOpen(true)
       setIsMinimized(false)
       chatOpenTimeRef.current = Date.now()
-      const prompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${p.name}* (SKU: ${p.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
-      handleSendMessage(prompt)
+      const defaultPrompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${p.name}* (SKU: ${p.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
+      const prompt = customEvent.detail?.prompt
+        ? customEvent.detail.prompt.replace(/{product}/gi, p.name)
+        : defaultPrompt
+      handleSendMessage(prompt, undefined, p)
     }
 
     window.addEventListener("open-herbal-consultation", handleConsultEvent)

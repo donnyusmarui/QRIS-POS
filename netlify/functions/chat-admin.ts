@@ -46,8 +46,23 @@ export default async (req: Request, context: Context) => {
           .from(chatMessages)
           .where(eq(chatMessages.sessionId, id))
           .orderBy(asc(chatMessages.createdAt));
+        let meta: any = { symptoms: [], source: 'rag_main' };
+        try {
+          const parsed = JSON.parse(s[0].symptomsJson || '{}');
+          if (Array.isArray(parsed)) meta = { symptoms: parsed, source: 'rag_main' };
+          else if (parsed && typeof parsed === 'object') meta = parsed;
+        } catch {}
+
         return successResponse({
-          session: s[0],
+          session: {
+            ...s[0],
+            source: meta.source || (meta.productId ? 'product' : 'rag_main'),
+            productId: meta.productId || null,
+            productName: meta.productName || null,
+            productSku: meta.productSku || null,
+            productCategory: meta.productCategory || null,
+            symptoms: Array.isArray(meta.symptoms) ? meta.symptoms : [],
+          },
           messages: rows.map((m) => ({
             id: m.id,
             sender: m.sender,
@@ -58,12 +73,15 @@ export default async (req: Request, context: Context) => {
         });
       }
 
-      // ── 2. Daftar Sesi dengan Filter Tanggal, Jam, Status, dan Pencarian ──
+      // ── 2. Daftar Sesi dengan Filter Tanggal, Jam, Status, Sumber, Produk, Kategori, dan Pencarian ──
       const filterDate = url.searchParams.get('date'); // YYYY-MM-DD
       const filterMonth = url.searchParams.get('month'); // YYYY-MM
-      const filterTimeSlot = url.searchParams.get('timeSlot'); // morning (06-12), afternoon (12-18), evening (18-24), night (00-06)
+      const filterTimeSlot = url.searchParams.get('timeSlot'); // morning, afternoon, evening, night
       const filterLeadStatus = url.searchParams.get('leadStatus'); // hot_lead, general_inquiry, etc.
       const filterArchived = url.searchParams.get('archived'); // 'true' | 'false' | 'all'
+      const filterSource = url.searchParams.get('source'); // 'product' | 'rag_main' | 'all'
+      const filterProductId = url.searchParams.get('productId');
+      const filterCategory = url.searchParams.get('category');
       const search = (url.searchParams.get('search') || '').trim().toLowerCase();
 
       const allSessions: any[] = await db
@@ -83,6 +101,32 @@ export default async (req: Request, context: Context) => {
       }
 
       const filtered = allSessions.filter((s) => {
+        // Parse metadata dari symptomsJson
+        let meta: any = { symptoms: [], source: 'rag_main' };
+        try {
+          const parsed = JSON.parse(s.symptomsJson || '{}');
+          if (Array.isArray(parsed)) meta = { symptoms: parsed, source: 'rag_main' };
+          else if (parsed && typeof parsed === 'object') meta = parsed;
+        } catch {}
+
+        // Filter Sumber (product vs rag_main)
+        if (filterSource && filterSource !== 'all') {
+          const currentSource = meta.source || (meta.productId ? 'product' : 'rag_main');
+          if (currentSource !== filterSource) return false;
+        }
+
+        // Filter Spesifik Produk
+        if (filterProductId && filterProductId !== 'all') {
+          if (meta.productId !== filterProductId) return false;
+        }
+
+        // Filter Kategori Produk
+        if (filterCategory && filterCategory !== 'all') {
+          if (!meta.productCategory || !meta.productCategory.toLowerCase().includes(filterCategory.toLowerCase())) {
+            return false;
+          }
+        }
+
         // Filter Arsip: default tampilkan non-arsip jika filterArchived kosong
         if (filterArchived === 'true' && !s.isArchived) return false;
         if (filterArchived === 'false' && s.isArchived) return false;
@@ -120,8 +164,17 @@ export default async (req: Request, context: Context) => {
           const name = (s.customerName || '').toLowerCase();
           const phone = (s.customerPhone || '').toLowerCase();
           const reason = (s.handoffReason || '').toLowerCase();
+          const prodName = (meta.productName || '').toLowerCase();
+          const prodSku = (meta.productSku || '').toLowerCase();
           const lastText = (lastMap.get(s.id)?.content || '').toLowerCase();
-          if (!name.includes(search) && !phone.includes(search) && !reason.includes(search) && !lastText.includes(search)) {
+          if (
+            !name.includes(search) &&
+            !phone.includes(search) &&
+            !reason.includes(search) &&
+            !prodName.includes(search) &&
+            !prodSku.includes(search) &&
+            !lastText.includes(search)
+          ) {
             return false;
           }
         }
@@ -129,22 +182,36 @@ export default async (req: Request, context: Context) => {
         return true;
       });
 
-      const list = filtered.map((s) => ({
-        id: s.id,
-        status: s.status,
-        stage: s.stage,
-        handoffReason: s.handoffReason,
-        customerName: s.customerName || 'Tamu Apotek',
-        customerPhone: s.customerPhone || null,
-        leadStatus: s.leadStatus || 'general_inquiry',
-        adminNotes: s.adminNotes || '',
-        isArchived: Boolean(s.isArchived),
-        symptoms: s.symptomsJson ? JSON.parse(s.symptomsJson) : [],
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-        lastMessage: lastMap.get(s.id)?.content?.slice(0, 140) || '',
-        lastSender: lastMap.get(s.id)?.sender || ''
-      }));
+      const list = filtered.map((s) => {
+        let meta: any = { symptoms: [], source: 'rag_main' };
+        try {
+          const parsed = JSON.parse(s.symptomsJson || '{}');
+          if (Array.isArray(parsed)) meta = { symptoms: parsed, source: 'rag_main' };
+          else if (parsed && typeof parsed === 'object') meta = parsed;
+        } catch {}
+
+        return {
+          id: s.id,
+          status: s.status,
+          stage: s.stage,
+          handoffReason: s.handoffReason,
+          customerName: s.customerName || 'Tamu Apotek',
+          customerPhone: s.customerPhone || null,
+          leadStatus: s.leadStatus || 'general_inquiry',
+          adminNotes: s.adminNotes || '',
+          isArchived: Boolean(s.isArchived),
+          symptoms: Array.isArray(meta.symptoms) ? meta.symptoms : [],
+          source: meta.source || (meta.productId ? 'product' : 'rag_main'),
+          productId: meta.productId || null,
+          productName: meta.productName || null,
+          productSku: meta.productSku || null,
+          productCategory: meta.productCategory || null,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          lastMessage: lastMap.get(s.id)?.content?.slice(0, 140) || '',
+          lastSender: lastMap.get(s.id)?.sender || ''
+        };
+      });
 
       return successResponse(list);
     }

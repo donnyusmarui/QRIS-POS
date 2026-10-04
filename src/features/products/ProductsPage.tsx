@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from "react"
 import { useAuthStore } from "@/stores/auth-store"
 import { apiFetch, hasPermission } from "@/lib/api"
 import type { Product, ProductFormData, PaginatedResponse } from "@/types"
-import { Plus, Search, Pencil, Trash2 } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, QrCode, FileSpreadsheet, Printer } from "lucide-react"
 import { ProductFormDialog } from "./ProductFormDialog"
+import { ProductQrModal } from "./ProductQrModal"
+import { ProductBatchQrModal } from "./ProductBatchQrModal"
+import { ProductBatchUploadModal } from "./ProductBatchUploadModal"
 
 export function ProductsPage() {
   const user = useAuthStore((s) => s.user)
@@ -14,6 +17,9 @@ export function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [selectedQrProduct, setSelectedQrProduct] = useState<Product | null>(null)
+  const [isBatchQrOpen, setIsBatchQrOpen] = useState(false)
+  const [isBatchUploadOpen, setIsBatchUploadOpen] = useState(false)
 
   const canWrite = hasPermission(user, "products:write")
   const canDelete = hasPermission(user, "products:delete")
@@ -82,20 +88,49 @@ export function ProductsPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Produk</h1>
-        {canWrite && (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900">Katalog Produk</h1>
+          <p className="text-xs text-stone-500">Kelola master data herbal, cetak label QR, dan unggah batch.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => {
-              setEditingProduct(null)
-              setDialogOpen(true)
-            }}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            type="button"
+            onClick={() => setIsBatchQrOpen(true)}
+            disabled={products.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition shadow-2xs cursor-pointer disabled:opacity-50"
+            title="Cetak Semua QR Code Produk dalam format A4"
           >
-            <Plus className="h-4 w-4" />
-            Tambah Produk
+            <Printer className="h-4 w-4 text-emerald-700" />
+            <span>Cetak Semua QR (Batch)</span>
           </button>
-        )}
+
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => setIsBatchUploadOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs font-bold text-stone-700 hover:bg-stone-50 transition shadow-2xs cursor-pointer"
+              title="Unggah batch produk via spreadsheet Excel"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+              <span>Import Excel</span>
+            </button>
+          )}
+
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingProduct(null)
+                setDialogOpen(true)
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-xs font-bold text-white shadow-xs shadow-emerald-700/20 transition cursor-pointer"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Tambah Produk</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search */}
@@ -122,9 +157,7 @@ export function ProductsPage() {
               <th className="px-4 py-3 text-right font-medium">Harga</th>
               <th className="px-4 py-3 text-right font-medium">Stok</th>
               <th className="px-4 py-3 text-left font-medium">Kategori</th>
-              {(canWrite || canDelete) && (
-                <th className="px-4 py-3 text-right font-medium">Aksi</th>
-              )}
+              <th className="px-4 py-3 text-right font-medium">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -171,30 +204,38 @@ export function ProductsPage() {
                       {product.category ?? "—"}
                     </span>
                   </td>
-                  {(canWrite || canDelete) && (
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        {canWrite && (
-                          <button
-                            onClick={() => handleEdit(product)}
-                            className="rounded p-1.5 hover:bg-accent"
-                            title="Edit"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => handleDelete(product.id)}
-                            className="rounded p-1.5 hover:bg-destructive/10 text-destructive"
-                            title="Hapus"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedQrProduct(product)}
+                        className="rounded-lg p-1.5 hover:bg-emerald-50 text-emerald-700 transition cursor-pointer"
+                        title="Lihat & Cetak QR Code Produk"
+                      >
+                        <QrCode className="h-4 w-4" />
+                      </button>
+                      {canWrite && (
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(product)}
+                          className="rounded-lg p-1.5 hover:bg-accent text-stone-600 transition cursor-pointer"
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(product.id)}
+                          className="rounded-lg p-1.5 hover:bg-destructive/10 text-destructive transition cursor-pointer"
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -234,6 +275,30 @@ export function ProductsPage() {
           setEditingProduct(null)
         }}
         onSave={handleSave}
+      />
+
+      {/* Single Product QR Code Modal */}
+      <ProductQrModal
+        open={!!selectedQrProduct}
+        product={selectedQrProduct}
+        onClose={() => setSelectedQrProduct(null)}
+      />
+
+      {/* Batch QR Code Modal */}
+      <ProductBatchQrModal
+        open={isBatchQrOpen}
+        products={products}
+        onClose={() => setIsBatchQrOpen(false)}
+      />
+
+      {/* Batch Upload Excel Modal */}
+      <ProductBatchUploadModal
+        open={isBatchUploadOpen}
+        onClose={() => setIsBatchUploadOpen(false)}
+        onSuccess={() => {
+          setIsBatchUploadOpen(false)
+          fetchProducts()
+        }}
       />
     </div>
   )
