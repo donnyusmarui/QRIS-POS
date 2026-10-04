@@ -99,16 +99,42 @@ function parseTags(raw: string, userAllowsRecommendation: boolean = false): { te
   return { text, recommendSkus, handoff };
 }
 
-function buildCatalog(items: ProductItem[]): string {
-  return items
+function findQueriedProduct(query: string, items: ProductItem[]): ProductItem | null {
+  if (!query) return null;
+  const upper = query.toUpperCase();
+  // 1. Cek pola SKU seperti HERB-DIA-001
+  const skuMatch = upper.match(/\bHERB-[A-Z]{3}-\d{3}\b/);
+  if (skuMatch) {
+    const found = items.find((p) => p.sku.toUpperCase() === skuMatch[0]);
+    if (found) return found;
+  }
+  // 2. Cek nama produk langsung
+  const lower = query.toLowerCase();
+  for (const p of items) {
+    if (p.name && lower.includes(p.name.toLowerCase())) {
+      return p;
+    }
+  }
+  return null;
+}
+
+function buildCatalog(items: ProductItem[], queriedProduct?: ProductItem | null): string {
+  // Bila ada produk yang sedang dikonsultasikan langsung, letakkan di urutan paling atas
+  const sorted = queriedProduct
+    ? [queriedProduct, ...items.filter((p) => p.sku.toUpperCase() !== queriedProduct.sku.toUpperCase())]
+    : items;
+
+  // Batasi 8-10 produk paling relevan agar payload token padat, cepat diproses, dan bebas latency bottleneck
+  return sorted
+    .slice(0, 10)
     .map((p) => {
-      const desc = (p.description || '').replace(/\s+/g, ' ').slice(0, 220);
+      const desc = (p.description || '').replace(/\s+/g, ' ').slice(0, 180);
       return `- [${p.sku}] ${p.name} | ${p.category} | Rp ${p.price.toLocaleString('id-ID')} | stok ${p.stock} | ${desc}`;
     })
     .join('\n');
 }
 
-// ─── Panggilan ke berbagai provider AI ───────────────────
+// ─── Panggilan ke berbagai provider AI (dengan timeout ketat 4.5 detik) ─
 async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[]): Promise<string | null> {
   const { provider, modelName, apiKey, baseUrl, temperature } = config;
   if (!apiKey || apiKey.trim() === '') return null;
@@ -119,17 +145,20 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
   while (convo.length > 0 && convo[0].role !== 'user') convo.shift();
   if (convo.length === 0) return null;
 
+  // Timeout 4.5 detik agar Netlify functions (limit 10 detik) memiliki ruang fallback tanpa HTTP 504
+  const TIMEOUT_MS = 4500;
+
   try {
     if (provider === 'gemini') {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
           contents: convo.map((t) => ({ role: t.role === 'user' ? 'user' : 'model', parts: [{ text: t.content }] })),
-          generationConfig: { temperature: temp, maxOutputTokens: 1200 }
+          generationConfig: { temperature: temp, maxOutputTokens: 350 }
         })
       });
       if (!res.ok) {
@@ -145,8 +174,8 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        signal: AbortSignal.timeout(9000),
-        body: JSON.stringify({ model: modelName, system, max_tokens: 1200, temperature: temp, messages: convo })
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        body: JSON.stringify({ model: modelName, system, max_tokens: 350, temperature: temp, messages: convo })
       });
       if (!res.ok) {
         console.warn(`Anthropic HTTP ${res.status}:`, (await res.text()).slice(0, 300));
@@ -172,12 +201,12 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       const res = await fetch(`${finalBase}/chat/completions`, {
         method: 'POST',
         headers,
-        signal: AbortSignal.timeout(9000),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
         body: JSON.stringify({
           model: modelName,
           temperature: temp,
           messages: [{ role: 'system', content: system }, ...convo],
-          max_tokens: 1200
+          max_tokens: 350
         })
       });
       if (!res.ok) {
@@ -189,7 +218,7 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
       return out ? stripThinking(out) : null;
     }
   } catch (apiErr) {
-    console.warn(`External AI API call to ${provider} failed, falling back to heuristic engine:`, apiErr);
+    console.warn(`External AI API call to ${provider} timed out / failed, activating instant domain heuristic engine:`, apiErr);
   }
   return null;
 }
@@ -218,38 +247,52 @@ interface Cluster {
 const CLUSTERS: Record<string, Cluster> = {
   kolesterol: {
     categoryName: 'Kolesterol & Jantung',
-    keywords: ['kolesterol', 'trigliserida', 'ldl', 'lemak darah', 'tengkuk', 'leher tegang', 'leher pegal', 'leher kaku', 'santan', 'gorengan', 'daging merah', 'jeroan', 'kambing'],
+    keywords: ['kolesterol', 'trigliserida', 'ldl', 'lemak darah', 'tengkuk', 'leher tegang', 'leher pegal', 'leher kaku', 'santan', 'gorengan', 'daging merah', 'jeroan', 'kambing', 'herb-kol-001', 'bawang putih'],
     empathy: 'Wah, tengkuk yang kaku dan berat memang bikin tidak nyaman ya 😔',
     q1: 'Boleh tahu, sudah berapa lama keluhan ini dirasakan, dan seberapa sering muncul?',
     q2: 'Apakah Anda pernah cek kolesterol di lab, atau sedang rutin minum obat dari dokter?'
   },
   darahKental: {
     categoryName: 'Darah Kental & Sirkulasi',
-    keywords: ['darah kental', 'kesemutan', 'kebas', 'baal', 'ujung jari dingin', 'kaki dingin', 'tangan dingin', 'sirkulasi', 'kram betis', 'kram kaki'],
+    keywords: ['darah kental', 'kesemutan', 'kebas', 'baal', 'ujung jari dingin', 'kaki dingin', 'tangan dingin', 'sirkulasi', 'kram betis', 'kram kaki', 'herb-koa-001', 'ginkgo'],
     empathy: 'Kesemutan dan jari yang dingin itu memang mengganggu aktivitas ya 😔',
     q1: 'Sudah berapa lama dirasakan, dan biasanya muncul di waktu tertentu (misalnya pagi atau setelah duduk lama)?',
     q2: 'Apakah Anda sedang minum obat pengencer darah atau punya riwayat tekanan darah/gula darah tinggi?'
   },
   asamUrat: {
     categoryName: 'Asam Urat & Sendi',
-    keywords: ['asam urat', 'urat', 'purin', 'emping', 'sendi', 'nyeri sendi', 'bengkak', 'jempol', 'lutut', 'linu', 'ngilu', 'rematik', 'gout'],
+    keywords: ['asam urat', 'urat', 'purin', 'emping', 'sendi', 'nyeri sendi', 'bengkak', 'jempol', 'lutut', 'linu', 'ngilu', 'rematik', 'gout', 'herb-uri-001', 'uric-herba'],
     empathy: 'Nyeri dan bengkak di sendi pasti sangat menyiksa ya 😔',
     q1: 'Sendi bagian mana yang paling sakit, dan sejak kapan mulai terasa?',
     q2: 'Pernah cek kadar asam urat? Dan apakah sedang minum obat dari dokter saat ini?'
   },
   diabetes: {
     categoryName: 'Diabetes & Gula Darah',
-    keywords: ['diabetes', 'gula darah', 'glukosa', 'kencing manis', 'sering haus', 'haus terus', 'sering kencing', 'cepat lelah', 'lemas', 'insulin', 'hba1c'],
+    keywords: ['diabetes', 'gula darah', 'glukosa', 'kencing manis', 'sering haus', 'haus terus', 'sering kencing', 'cepat lelah', 'lemas', 'insulin', 'hba1c', 'herb-dia-001', 'glucodex'],
     empathy: 'Mudah lelah dan sering haus memang bikin tidak bertenaga ya 😔',
     q1: 'Sejak kapan gejalanya terasa, dan apakah gula darah Anda pernah diperiksa?',
     q2: 'Apakah sedang rutin minum obat diabetes atau suntik insulin dari dokter?'
   },
   hipertensi: {
     categoryName: 'Hipertensi & Tensi Darah',
-    keywords: ['hipertensi', 'tensi', 'darah tinggi', 'tekanan darah', 'pusing', 'kepala berdenyut', 'migrain', 'pundak berat', 'berdebar'],
+    keywords: ['hipertensi', 'tensi', 'darah tinggi', 'tekanan darah', 'pusing', 'kepala berdenyut', 'migrain', 'pundak berat', 'berdebar', 'herb-ten-001', 'tensicap'],
     empathy: 'Pusing dan tensi yang tinggi itu pasti bikin cemas ya 😔',
     q1: 'Kira-kira berapa angka tensi terakhir Anda, dan sudah berapa lama keluhan ini?',
     q2: 'Apakah Anda sedang rutin minum obat tekanan darah dari dokter?'
+  },
+  lambung: {
+    categoryName: 'Pencernaan & Lambung',
+    keywords: ['lambung', 'maag', 'mag', 'gerd', 'asam lambung', 'perih', 'mual', 'kembung', 'ulu hati', 'begah', 'herb-gas-001'],
+    empathy: 'Perut perih dan begah akibat asam lambung memang sangat mengganggu aktivitas ya 😔',
+    q1: 'Apakah rasa perih biasanya muncul saat perut kosong atau setelah mengonsumsi makanan pedas/asam?',
+    q2: 'Sudah berapa lama keluhan ini dirasakan, dan apakah sedang mengonsumsi antasida atau obat lambung dokter?'
+  },
+  stamina: {
+    categoryName: 'Daya Tahan & Stamina',
+    keywords: ['daya tahan', 'imun', 'stamina', 'lelah', 'capek', 'masuk angin', 'flu', 'batuk', 'pilek', 'meriang', 'herb-imm-001'],
+    empathy: 'Kondisi tubuh yang kurang fit dan lelah memang butuh perhatian ekstra ya 😔',
+    q1: 'Sudah berapa hari badan terasa kurang fit, dan apakah disertai demam atau flu batuk?',
+    q2: 'Bagaimana asupan istirahat serta hidrasi air hangat Anda dalam beberapa hari terakhir?'
   }
 };
 
@@ -301,7 +344,43 @@ interface HeuristicResult {
   recommended: ProductItem[];
 }
 
-function heuristicReply(stage: string, query: string, customerText: string, items: ProductItem[]): HeuristicResult {
+function heuristicReply(
+  stage: string,
+  query: string,
+  customerText: string,
+  items: ProductItem[],
+  queriedProduct?: ProductItem | null,
+  pharmacistName: string = 'Apt. Siti Rahma, S.Farm'
+): HeuristicResult {
+  // ── A. PENANGANAN KONSULTASI PRODUK SPESIFIK ──
+  if (queriedProduct) {
+    const desc = queriedProduct.description || '';
+    const bpomMatch = desc.match(/\[POM\s+TR\s+[^\]]+\]/i);
+    const bpomInfo = bpomMatch ? ` (${bpomMatch[0].replace(/[\[\]]/g, '')})` : '';
+    const cleanDesc = desc.replace(/\[POM[^\]]*\]/gi, '').trim();
+
+    // Tahap Awal konsultasi produk
+    if (stage === 'greeting' || stage.startsWith('gathering:1') || stage === 'gathering:0') {
+      const reply = `Halo! Senang sekali bisa membantu Anda berkonsultasi mengenai herbal *${queriedProduct.name}* (SKU: ${queriedProduct.sku})${bpomInfo} 😊\n\nHerbal ini diformulasikan khusus untuk kategori **${queriedProduct.category}**.\nKhasiat & petunjuk pemakaian: ${cleanDesc || 'membantu memelihara kesehatan tubuh secara alami'}.\n\nBoleh diceritakan keluhan atau gejala apa yang sedang Anda rasakan saat ini, agar saya dapat memastikan herbal ini benar-benar sesuai dengan kondisi kesehatan Anda? 🌿`;
+      return {
+        reply,
+        stage: 'gathering:1',
+        recommended: [queriedProduct]
+      };
+    }
+
+    // Tahap Persetujuan / Rekomendasi
+    if (stage === 'consent_asked' || AFFIRM_RE.test(query) || stage.startsWith('gathering:')) {
+      const reply = `Terima kasih atas informasinya 🙏 Berdasarkan kebutuhan Anda, *${queriedProduct.name}* sangat tepat untuk mendampingi pemulihan dan memelihara kesehatan Anda.\n\nAturan konsumsi: ikuti petunjuk pada kemasan secara teratur dan perbanyak konsumsi air putih hangat. Anda bisa langsung memesan produk ini melalui tombol di bawah 🌿`;
+      return {
+        reply,
+        stage: 'recommended',
+        recommended: [queriedProduct]
+      };
+    }
+  }
+
+  // ── B. PENANGANAN BERDASARKAN KELUHAN GEJALA KLINIS ──
   const stepMatch = /^gathering:(\d+)$/.exec(stage);
   const step = stepMatch ? Number(stepMatch[1]) : 0;
   const cluster = detectCluster(customerText);
@@ -331,7 +410,7 @@ function heuristicReply(stage: string, query: string, customerText: string, item
   if (!cluster) {
     const reply =
       step === 0
-        ? 'Halo, senang bertemu Anda! 😊 Bagaimana kabarnya hari ini?\n\nBoleh ceritakan apa yang sedang Anda rasakan atau ingin Anda konsultasikan? Santai saja, saya siap mendengarkan.'
+        ? `Halo, saya ${pharmacistName}! Senang bertemu Anda 😊 Bagaimana kabarnya hari ini?\n\nBoleh ceritakan apa yang sedang Anda rasakan atau ingin Anda konsultasikan seputar kesehatan dan herbal? Santai saja, saya siap mendengarkan.`
         : 'Terima kasih sudah bercerita 🙏 Supaya saya bisa memahami lebih baik, boleh dijelaskan lebih detail keluhannya — bagian tubuh mana yang terasa tidak nyaman dan sejak kapan?';
     return { reply, stage: step === 0 ? 'greeting' : stage, recommended: [] };
   }
@@ -520,10 +599,13 @@ export default async (req: Request, context: Context) => {
     }));
     const customerText = history.filter((m: any) => m.sender === 'customer').map((m: any) => m.content).join(' \n ');
     const customerTurnsCount = history.filter((m: any) => m.sender === 'customer').length;
+    const queriedProduct = findQueriedProduct(query, catalog) || findQueriedProduct(customerText, catalog);
 
     let turnGuidance = '';
-    if (customerTurnsCount <= 1) {
-      turnGuidance = '\n\nSTATUS GILIRAN: Putaran Awal (Turn 1). Berikan empati mendalam + mini-edukasi medis penyebab keluhan ini + ajukan 1 pertanyaan ramah penguat. DILARANG KERAS menyebutkan nama produk obat/herbal.';
+    if (queriedProduct) {
+      turnGuidance = `\n\nSTATUS KONSULTASI: Pasien secara spesifik menanyakan herbal *${queriedProduct.name}* (SKU: ${queriedProduct.sku}). Berikan penjelasan klinis yang hangat mengenai khasiat/indikasi utama produk ini, aturan pakai/dosis yang dianjurkan (${queriedProduct.description || ''}), serta tanyakan keluhan atau kondisi yang sedang dialami pasien untuk memastikan kesesuaiannya. Di akhir jawaban, sertakan tag [[RECOMMEND:${queriedProduct.sku}]] agar kartu produk otomatis ditampilkan ke pasien.`;
+    } else if (customerTurnsCount <= 1) {
+      turnGuidance = '\n\nSTATUS GILIRAN: Putaran Awal (Turn 1). Berikan empati mendalam + mini-edukasi medis penyebab keluhan ini + ajukan 1 pertanyaan ramah penguat. JANGAN merekomendasikan produk lain di luar keluhan.';
     } else if (customerTurnsCount === 2) {
       turnGuidance = '\n\nSTATUS GILIRAN: Putaran Pendalaman (Turn 2). Berikan apresiasi + tips pola hidup praktis + tanyakan riwayat cek lab/tensi/gula. JANGAN merekomendasikan produk dulu.';
     } else if (customerTurnsCount === 3 && session.stage !== 'consent_asked') {
@@ -549,11 +631,11 @@ export default async (req: Request, context: Context) => {
       customerContext +
       turnGuidance +
       (aiConfig.systemPromptOverride.trim() ? `\n\nINSTRUKSI TAMBAHAN DARI ADMIN:\n${aiConfig.systemPromptOverride.trim()}` : '') +
-      `\n\nKATALOG PRODUK (satu-satunya sumber rekomendasi):\n${buildCatalog(catalog)}`;
+      `\n\nKATALOG PRODUK (satu-satunya sumber rekomendasi):\n${buildCatalog(catalog, queriedProduct)}`;
 
     const aiRaw = await callMultiModelAI(aiConfig, system, turns);
 
-    const userAllowsRecommendation = session.stage === 'consent_asked' || AFFIRM_RE.test(query);
+    const userAllowsRecommendation = session.stage === 'consent_asked' || AFFIRM_RE.test(query) || Boolean(queriedProduct);
 
     if (aiRaw) {
       const parsed = parseTags(aiRaw, userAllowsRecommendation);
@@ -571,10 +653,15 @@ export default async (req: Request, context: Context) => {
 
     if (!replyText) {
       usedFallback = true;
-      const h = heuristicReply(session.stage, query, customerText, catalog);
+      const h = heuristicReply(session.stage, query, customerText, catalog, queriedProduct, pharmacistName);
       replyText = h.reply;
       recommended = h.recommended;
       nextStage = h.stage;
+    }
+
+    // Jika pasien menanyakan produk spesifik namun belum terlampir di kartu rekomendasi, lampirkan otomatis
+    if (queriedProduct && recommended.length === 0) {
+      recommended = [queriedProduct];
     }
 
     const patchPayload: Record<string, any> = { stage: nextStage };
@@ -600,7 +687,18 @@ export default async (req: Request, context: Context) => {
       usedFallback
     });
   } catch (err: any) {
-    console.error('Error in consultation-chat handler:', err);
-    return errorResponse(500, err?.message || 'Terjadi kesalahan sistem konsultasi');
+    console.error('Error in consultation-chat handler, applying graceful fallback:', err);
+    const safeGreeting = 'Halo! Saya Apoteker Pendamping Klinis di Apotek Herbal Medika 😊 Mohon maaf sempat ada kendala koneksi sesaat. Boleh diceritakan keluhan kesehatan atau produk herbal BPOM apa yang sedang ingin Anda konsultasikan? Saya siap mendampingi Anda 🌿';
+    return successResponse({
+      sessionId: 'chat_recovery',
+      status: 'ai',
+      stage: 'greeting',
+      reply: safeGreeting,
+      handoff: false,
+      recommendedProducts: [],
+      activeProvider: 'local',
+      activeModel: 'domain_fallback',
+      usedFallback: true
+    });
   }
 };
