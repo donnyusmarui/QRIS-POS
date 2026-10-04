@@ -530,7 +530,9 @@ export function CustomerChatbotWidget({
     targetProduct?: Product | null
   ) => {
     const message = (textToSend || inputMessage).trim()
-    if (!message || isTyping) return
+    // Izinkan pesan jika berasal dari klik konsultasi produk (targetProduct), selain itu cegah saat bot sedang mengetik
+    if (!message) return
+    if (isTyping && !targetProduct) return
 
     setMessages((prev) => [
       ...prev,

@@ -389,6 +389,11 @@ export function CustomerPortalPage() {
     setProductToConsult(product)
   }, [])
 
+  const handleClearConsultProduct = useCallback(() => {
+    setProductToConsult(null)
+    setCustomPromptOverride(undefined)
+  }, [])
+
   // Current active transaction state
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null)
   const [activeQrisRefId, setActiveQrisRefId] = useState<string | null>(null)
@@ -874,10 +879,7 @@ export function CustomerPortalPage() {
         isCartOpen={isCartOpen}
         productToConsult={productToConsult}
         customPromptOverride={customPromptOverride}
-        onClearConsultProduct={() => {
-          setProductToConsult(null)
-          setCustomPromptOverride(undefined)
-        }}
+        onClearConsultProduct={handleClearConsultProduct}
       />
     </div>
   )

@@ -451,10 +451,10 @@ export function ProductBatchUploadModal({
             onClick={onClose}
             className="flex min-h-[40px] h-10 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
           >
-            Tutup
+            {submitResult ? "Selesai & Tutup" : "Tutup"}
           </button>
 
-          {rows.length > 0 && (
+          {rows.length > 0 && !submitResult && (
             <button
               type="button"
               onClick={handleExecuteImport}
