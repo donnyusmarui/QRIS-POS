@@ -1,6 +1,6 @@
 import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { chatbotConfig } from '../../db/schema';
+import { chatbotConfig, products } from '../../db/schema';
 import { corsHeaders, errorResponse, successResponse } from './_shared/response';
 import { extractAuthUser } from './_shared/auth-middleware';
 import { eq } from 'drizzle-orm';
@@ -31,6 +31,78 @@ export default async (req: Request, _context: Context) => {
     const body = await req.json();
     const db = createDb();
     const now = new Date().toISOString();
+
+    // ── Handle Pengaturan Chatbot Produk Terpusat ──
+    if (body.id === 'product_chat' || body.type === 'product_chat') {
+      const masterEnabled = body.masterEnabled !== undefined ? Boolean(body.masterEnabled) : true;
+      const defaultButtonText = body.defaultButtonText?.trim() || 'Tanya Apoteker';
+      const productGreetingTemplate = body.productGreetingTemplate?.trim() || 'Halo! Ada yang ingin Anda konsultasikan seputar khasiat, aturan minum, atau pantangan dari {product_name}?';
+      const productSystemPrompt = body.productSystemPrompt?.trim() || 'Saat memberikan edukasi produk herbal, selalu jelaskan aturan pakai, waktu konsumsi terbaik (sebelum/sesudah makan), pantangan makanan terkait penyakit, dan tegaskan bahwa herbal merupakan terapi pendamping komplementer (pasien tidak boleh menghentikan resep obat dokter secara mendadak).';
+
+      const existing = await db
+        .select()
+        .from(chatbotConfig)
+        .where(eq(chatbotConfig.id, 'product_chat'))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(chatbotConfig)
+          .set({
+            pharmacistName: defaultButtonText,
+            pharmacistTitle: productGreetingTemplate,
+            pharmacistStatusText: productSystemPrompt,
+            leadNudgeEnabled: masterEnabled,
+            updatedAt: now,
+          })
+          .where(eq(chatbotConfig.id, 'product_chat'));
+      } else {
+        await db.insert(chatbotConfig).values({
+          id: 'product_chat',
+          pharmacistName: defaultButtonText,
+          pharmacistTitle: productGreetingTemplate,
+          pharmacistStatusText: productSystemPrompt,
+          leadNudgeEnabled: masterEnabled,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      // Update overrides per produk jika disertakan
+      if (Array.isArray(body.productOverrides)) {
+        for (const item of body.productOverrides) {
+          if (!item.productId) continue;
+          const prodRows = await db
+            .select()
+            .from(products)
+            .where(eq(products.id, item.productId))
+            .limit(1);
+
+          if (prodRows.length > 0) {
+            const rawDesc = prodRows[0].description || '';
+            const baseClean = rawDesc.replace(/<!--chat:[\s\S]*?-->/g, '').trim();
+            const fullDesc = `${baseClean}\n\n<!--chat:${JSON.stringify({
+              buttonText: (item.buttonText || defaultButtonText).trim(),
+              enabled: item.enabled !== false,
+              customPrompt: (item.customPrompt || '').trim(),
+            })}-->`;
+
+            await db
+              .update(products)
+              .set({ description: fullDesc, updatedAt: now })
+              .where(eq(products.id, item.productId));
+          }
+        }
+      }
+
+      return successResponse({
+        id: 'product_chat',
+        masterEnabled,
+        defaultButtonText,
+        productGreetingTemplate,
+        productSystemPrompt,
+      });
+    }
 
     const pharmacistName = body.pharmacistName?.trim() || 'Apt. Siti Rahma, S.Farm';
     const pharmacistTitle = body.pharmacistTitle?.trim() || 'Apoteker Pendamping Klinis';

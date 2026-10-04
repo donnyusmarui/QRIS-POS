@@ -27,7 +27,38 @@ export default async (req: Request, _context: Context) => {
   }
 
   try {
+    const url = new URL(req.url);
+    const configType = url.searchParams.get('type') || url.searchParams.get('id');
     const db = createDb();
+
+    // ── Handle Pengaturan Chatbot Produk Terpusat ──
+    if (configType === 'product_chat') {
+      const rows = await db
+        .select()
+        .from(chatbotConfig)
+        .where(eq(chatbotConfig.id, 'product_chat'))
+        .limit(1);
+
+      if (!rows || rows.length === 0) {
+        return successResponse({
+          id: 'product_chat',
+          masterEnabled: true,
+          defaultButtonText: 'Tanya Apoteker',
+          productGreetingTemplate: 'Halo! Ada yang ingin Anda konsultasikan seputar khasiat, aturan minum, atau pantangan dari {product_name}?',
+          productSystemPrompt: 'Saat memberikan edukasi produk herbal, selalu jelaskan aturan pakai, waktu konsumsi terbaik (sebelum/sesudah makan), pantangan makanan terkait penyakit, dan tegaskan bahwa herbal merupakan terapi pendamping komplementer (pasien tidak boleh menghentikan resep obat dokter secara mendadak).'
+        });
+      }
+
+      const row = rows[0];
+      return successResponse({
+        id: 'product_chat',
+        masterEnabled: row.leadNudgeEnabled !== undefined ? Boolean(row.leadNudgeEnabled) : true,
+        defaultButtonText: row.pharmacistName || 'Tanya Apoteker',
+        productGreetingTemplate: row.pharmacistTitle || 'Halo! Ada yang ingin Anda konsultasikan seputar khasiat, aturan minum, atau pantangan dari {product_name}?',
+        productSystemPrompt: row.pharmacistStatusText || 'Saat memberikan edukasi produk herbal, selalu jelaskan aturan pakai, waktu konsumsi terbaik (sebelum/sesudah makan), pantangan makanan terkait penyakit, dan tegaskan bahwa herbal merupakan terapi pendamping komplementer (pasien tidak boleh menghentikan resep obat dokter secara mendadak).'
+      });
+    }
+
     const rows = await db
       .select()
       .from(chatbotConfig)

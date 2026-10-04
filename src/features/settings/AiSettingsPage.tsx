@@ -26,7 +26,14 @@ import {
   HeartHandshake,
   Activity,
   Leaf,
+  Sliders,
 } from "lucide-react"
+import {
+  DEFAULT_MASTER_PRODUCT_CHAT_CONFIG,
+  type MasterProductChatConfig,
+  type ProductChatOverride,
+  parseProductChatConfig,
+} from "@/lib/product-chat-config"
 
 interface SavedModel {
   id: string
@@ -163,7 +170,7 @@ const SAMPLE_AVATARS = [
 ]
 
 export function AiSettingsPage() {
-  const [activeTab, setActiveTab] = useState<"models" | "welcome" | "symptoms" | "persona" | "rag">("models")
+  const [activeTab, setActiveTab] = useState<"models" | "welcome" | "symptoms" | "persona" | "rag" | "product_chat">("models")
 
   // ── STATE: TAB 1 (MODELS) ──
   const [savedModels, setSavedModels] = useState<SavedModel[]>([])
@@ -241,6 +248,15 @@ export function AiSettingsPage() {
   const [isSearchingRag, setIsSearchingRag] = useState(false)
   const [ragResults, setRagResults] = useState<any[]>([])
   const [ragTotalIndexed, setRagTotalIndexed] = useState<number | null>(null)
+
+  // ── STATE: TAB 6 (CHATBOT PRODUK) ──
+  const [masterProductChat, setMasterProductChat] = useState<MasterProductChatConfig>(DEFAULT_MASTER_PRODUCT_CHAT_CONFIG)
+  const [productOverrides, setProductOverrides] = useState<ProductChatOverride[]>([])
+  const [isLoadingProductChat, setIsLoadingProductChat] = useState(false)
+  const [isSavingProductChat, setIsSavingProductChat] = useState(false)
+  const [productChatSuccess, setProductChatSuccess] = useState("")
+  const [productChatError, setProductChatError] = useState("")
+  const [productSearchTerm, setProductSearchTerm] = useState("")
 
   // ── LOADERS ──
   const loadModels = async (): Promise<SavedModel[]> => {
@@ -511,6 +527,83 @@ export function AiSettingsPage() {
     }
   }
 
+  // ── PRODUCT CHAT LOAD & SAVE ──
+  const loadProductChatConfig = async () => {
+    setIsLoadingProductChat(true)
+    try {
+      const [cfgRes, prodRes] = await Promise.all([
+        fetch("/api/chatbot-config-get?type=product_chat").then((r) => r.json()).catch(() => null),
+        apiFetch<any>("products-list?pageSize=200").catch(() => null),
+      ])
+
+      if (cfgRes?.success && cfgRes.data) {
+        setMasterProductChat(cfgRes.data)
+      }
+
+      const rawItems = prodRes?.data?.items || prodRes?.data || []
+      if (Array.isArray(rawItems)) {
+        const mapped: ProductChatOverride[] = rawItems.map((p: any) => {
+          const { chatConfig } = parseProductChatConfig(p.description)
+          return {
+            productId: p.id,
+            productName: p.name,
+            sku: p.sku || "",
+            category: p.category || "Umum",
+            enabled: chatConfig.enabled,
+            buttonText: chatConfig.buttonText || cfgRes?.data?.defaultButtonText || "Tanya Apoteker",
+            customPrompt: chatConfig.customPrompt || "",
+          }
+        })
+        setProductOverrides(mapped)
+      }
+    } catch (err: any) {
+      console.error("Gagal memuat konfigurasi chatbot produk:", err)
+    } finally {
+      setIsLoadingProductChat(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "product_chat") {
+      loadProductChatConfig()
+    }
+  }, [activeTab])
+
+  const handleSaveProductChat = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    setIsSavingProductChat(true)
+    setProductChatSuccess("")
+    setProductChatError("")
+    try {
+      const payload = {
+        id: "product_chat",
+        type: "product_chat",
+        masterEnabled: masterProductChat.masterEnabled,
+        defaultButtonText: masterProductChat.defaultButtonText,
+        productGreetingTemplate: masterProductChat.productGreetingTemplate,
+        productSystemPrompt: masterProductChat.productSystemPrompt,
+        productOverrides: productOverrides.map((p) => ({
+          productId: p.productId,
+          buttonText: p.buttonText,
+          enabled: p.enabled,
+          customPrompt: p.customPrompt,
+        })),
+      }
+
+      await apiFetch("chatbot-config-save", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      })
+
+      setProductChatSuccess("Pengaturan Chatbot Produk & Override Katalog berhasil disimpan!")
+      setTimeout(() => setProductChatSuccess(""), 3500)
+    } catch (err: any) {
+      setProductChatError(err.message || "Gagal menyimpan konfigurasi chatbot produk")
+    } finally {
+      setIsSavingProductChat(false)
+    }
+  }
+
   // ── RAG REINDEX & SEARCH ──
   const handleReindexRag = async () => {
     setIsReindexing(true)
@@ -732,6 +825,18 @@ export function AiSettingsPage() {
           >
             <Database className="h-3.5 w-3.5" />
             Custom RAG / Vektor
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("product_chat")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === "product_chat"
+                ? "bg-white text-emerald-800 shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
+            }`}
+          >
+            <Leaf className="h-3.5 w-3.5 text-emerald-600" />
+            Chatbot Produk
           </button>
         </div>
       </div>
@@ -1334,6 +1439,273 @@ export function AiSettingsPage() {
         )}
       </div>
     )}
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* TAB 6: PENGATURAN CHATBOT PER PRODUK (TERPUSAT)                */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "product_chat" && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {productChatSuccess && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>{productChatSuccess}</span>
+            </div>
+          )}
+          {productChatError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-800 font-semibold flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+              <span>{productChatError}</span>
+            </div>
+          )}
+
+          {/* Section 1: Pengaturan Master Chatbot Produk (Global Controls) */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 pb-4">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-stone-900 flex items-center gap-2 [text-wrap:balance]">
+                  <Leaf className="h-5 w-5 text-emerald-700 shrink-0" />
+                  Pengaturan Master Chatbot per Produk
+                </h2>
+                <p className="text-xs text-stone-500 mt-1 [text-wrap:pretty]">
+                  Konfigurasi sakelar master, label default tombol chat katalog, sapaan instan tanpa salam basa-basi, dan instruksi AI pendamping produk herbal.
+                </p>
+              </div>
+
+              {/* Master Switch Toggle */}
+              <div className="flex items-center gap-3 bg-stone-50 px-3.5 py-2 rounded-2xl border border-stone-200 self-start sm:self-auto">
+                <span className="text-xs font-semibold text-stone-700">Status Tombol Katalog:</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={masterProductChat.masterEnabled}
+                  onClick={() => setMasterProductChat({ ...masterProductChat, masterEnabled: !masterProductChat.masterEnabled })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                    masterProductChat.masterEnabled ? "bg-emerald-600" : "bg-stone-300"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      masterProductChat.masterEnabled ? "translate-x-5" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+                <span className={`text-xs font-bold ${masterProductChat.masterEnabled ? "text-emerald-700" : "text-stone-400"}`}>
+                  {masterProductChat.masterEnabled ? "Aktif" : "Nonaktif"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+              {/* Default Button Label */}
+              <div>
+                <label className="block text-stone-700 font-semibold mb-1">
+                  Label Tombol Default di Kartu Katalog
+                </label>
+                <input
+                  type="text"
+                  value={masterProductChat.defaultButtonText}
+                  onChange={(e) => setMasterProductChat({ ...masterProductChat, defaultButtonText: e.target.value })}
+                  placeholder="Contoh: Tanya Apoteker, Konsultasi Dosis, Cek Pantangan"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-stone-800 focus:outline-emerald-600 focus:bg-white text-xs"
+                />
+                <p className="text-[11px] text-stone-400 mt-1 [text-wrap:pretty]">
+                  Teks ini menjadi teks bawaan tombol pada kartu katalog jika produk tidak memiliki override khusus.
+                </p>
+              </div>
+
+              {/* Product Greeting Template */}
+              <div>
+                <label className="block text-stone-700 font-semibold mb-1">
+                  Template Sapaan Instan Produk
+                </label>
+                <input
+                  type="text"
+                  value={masterProductChat.productGreetingTemplate}
+                  onChange={(e) => setMasterProductChat({ ...masterProductChat, productGreetingTemplate: e.target.value })}
+                  placeholder="Contoh: Halo! Ada yang ingin Anda tanyakan seputar {product_name}?"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-stone-800 focus:outline-emerald-600 focus:bg-white text-xs"
+                />
+                <p className="text-[11px] text-stone-400 mt-1 [text-wrap:pretty]">
+                  Gunakan variabel <code className="bg-stone-100 text-stone-700 px-1 py-0.5 rounded font-mono">{"{product_name}"}</code> dan <code className="bg-stone-100 text-stone-700 px-1 py-0.5 rounded font-mono">{"{product_sku}"}</code> untuk nama dinamis.
+                </p>
+              </div>
+            </div>
+
+            {/* Product System Prompt */}
+            <div className="text-xs">
+              <label className="block text-stone-700 font-semibold mb-1">
+                Instruksi AI Khusus Edukasi Produk Herbal (System Prompt Override)
+              </label>
+              <textarea
+                rows={3}
+                value={masterProductChat.productSystemPrompt}
+                onChange={(e) => setMasterProductChat({ ...masterProductChat, productSystemPrompt: e.target.value })}
+                placeholder="Instruksi khusus bot ketika konsultasi berfokus pada produk herbal..."
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-stone-800 focus:outline-emerald-600 focus:bg-white text-xs leading-relaxed"
+              />
+              <p className="text-[11px] text-stone-400 mt-1 [text-wrap:pretty]">
+                Instruksi ini akan disuntikkan langsung ke model AI saat konsultasi berkonteks produk herbal tertentu (aturan pakai, interaksi obat resep, pantangan makanan, dll.).
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                disabled={isSavingProductChat}
+                onClick={() => handleSaveProductChat()}
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                {isSavingProductChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span>Simpan Pengaturan Master &amp; Seluruh Override</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Section 2: Fast Edit Table per Product (Katalog Override) */}
+          <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-stone-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                  <Sliders className="h-4 w-4 text-emerald-700" />
+                  Cepat Kelola Tombol &amp; Prompt per Produk ({productOverrides.length} Produk)
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5 [text-wrap:pretty]">
+                  Atur status visibilitas tombol chat, custom label, atau prompt spesifik per produk. Kosongkan untuk menggunakan nilai bawaan master.
+                </p>
+              </div>
+
+              {/* Search filter */}
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-stone-400" />
+                <input
+                  type="text"
+                  value={productSearchTerm}
+                  onChange={(e) => setProductSearchTerm(e.target.value)}
+                  placeholder="Cari nama, SKU, kategori..."
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl pl-8 pr-3 py-2 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            {isLoadingProductChat ? (
+              <div className="py-12 flex items-center justify-center gap-2 text-stone-500 text-xs">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-700" />
+                <span>Memuat katalog produk untuk konfigurasi AI...</span>
+              </div>
+            ) : productOverrides.length === 0 ? (
+              <div className="py-8 text-center text-xs text-stone-400 italic">
+                Belum ada produk aktif di katalog.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-stone-200 bg-stone-50/80 text-stone-600">
+                      <th className="py-3 px-3.5 font-bold">Produk Herbal</th>
+                      <th className="py-3 px-3.5 font-bold w-28 text-center">Status Chat</th>
+                      <th className="py-3 px-3.5 font-bold w-52">Label Tombol Chat</th>
+                      <th className="py-3 px-3.5 font-bold">Instruksi Prompt Spesifik (Opsional)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {productOverrides
+                      .filter((p) => {
+                        if (!productSearchTerm.trim()) return true
+                        const q = productSearchTerm.toLowerCase()
+                        return (
+                          p.productName.toLowerCase().includes(q) ||
+                          p.sku.toLowerCase().includes(q) ||
+                          p.category.toLowerCase().includes(q)
+                        )
+                      })
+                      .map((item) => (
+                        <tr key={item.productId} className="hover:bg-stone-50/60 transition">
+                          <td className="py-3 px-3.5">
+                            <div className="font-bold text-stone-900 leading-snug">{item.productName}</div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="font-mono tabular-nums text-[10px] text-stone-400">SKU: {item.sku}</span>
+                              <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/80">
+                                {item.category}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProductOverrides((prev) =>
+                                  prev.map((p) =>
+                                    p.productId === item.productId ? { ...p, enabled: !p.enabled } : p
+                                  )
+                                )
+                              }}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition cursor-pointer border ${
+                                item.enabled
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                  : "bg-stone-100 text-stone-400 border-stone-200"
+                              }`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${item.enabled ? "bg-emerald-500" : "bg-stone-400"}`} />
+                              <span>{item.enabled ? "Aktif" : "Nonaktif"}</span>
+                            </button>
+                          </td>
+                          <td className="py-3 px-3.5">
+                            <input
+                              type="text"
+                              value={item.buttonText}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setProductOverrides((prev) =>
+                                  prev.map((p) =>
+                                    p.productId === item.productId ? { ...p, buttonText: val } : p
+                                  )
+                                )
+                              }}
+                              placeholder={masterProductChat.defaultButtonText}
+                              className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 focus:outline-emerald-600"
+                            />
+                          </td>
+                          <td className="py-3 px-3.5">
+                            <input
+                              type="text"
+                              value={item.customPrompt}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setProductOverrides((prev) =>
+                                  prev.map((p) =>
+                                    p.productId === item.productId ? { ...p, customPrompt: val } : p
+                                  )
+                                )
+                              }}
+                              placeholder="Default master prompt..."
+                              className="w-full bg-white border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs text-stone-800 focus:outline-emerald-600"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Sticky Save CTA */}
+            <div className="pt-4 border-t border-stone-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-xs text-stone-500 [text-wrap:pretty]">
+                Perubahan pada override produk disimpan langsung ke deskripsi produk katalog secara backward-compatible.
+              </p>
+              <button
+                type="button"
+                disabled={isSavingProductChat}
+                onClick={() => handleSaveProductChat()}
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold text-xs transition shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+              >
+                {isSavingProductChat ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span>Simpan Semua Pengaturan Chatbot Produk</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* TAB 2: SAPAAN PEMBUKA CHATBOT                                  */}

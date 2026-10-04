@@ -617,11 +617,18 @@ export default async (req: Request, context: Context) => {
 
     let pharmacistName = 'Apt. Siti Rahma, S.Farm';
     let pharmacistTitle = 'Apoteker Pendamping Klinis';
+    let productSystemPrompt = '';
     try {
-      const cfgRows = await db.select().from(chatbotConfig).where(eq(chatbotConfig.id, 'default')).limit(1);
+      const [cfgRows, prodCfgRows] = await Promise.all([
+        db.select().from(chatbotConfig).where(eq(chatbotConfig.id, 'default')).limit(1),
+        db.select().from(chatbotConfig).where(eq(chatbotConfig.id, 'product_chat')).limit(1),
+      ]);
       if (cfgRows && cfgRows.length > 0) {
         if (cfgRows[0].pharmacistName) pharmacistName = cfgRows[0].pharmacistName;
         if (cfgRows[0].pharmacistTitle) pharmacistTitle = cfgRows[0].pharmacistTitle;
+      }
+      if (prodCfgRows && prodCfgRows.length > 0 && prodCfgRows[0].pharmacistStatusText) {
+        productSystemPrompt = prodCfgRows[0].pharmacistStatusText;
       }
     } catch {}
 
@@ -636,11 +643,15 @@ export default async (req: Request, context: Context) => {
     }));
     const customerText = history.filter((m: any) => m.sender === 'customer').map((m: any) => m.content).join(' \n ');
     const customerTurnsCount = history.filter((m: any) => m.sender === 'customer').length;
-    const queriedProduct = findQueriedProduct(query, catalog) || findQueriedProduct(customerText, catalog);
+    const targetProdFromReq = body.productId
+      ? catalog.find((p) => p.id === body.productId) || (body.productSku ? catalog.find((p) => p.sku === body.productSku) : null)
+      : null;
+    const queriedProduct = targetProdFromReq || findQueriedProduct(query, catalog) || findQueriedProduct(customerText, catalog);
 
     let turnGuidance = '';
     if (queriedProduct) {
-      turnGuidance = `\n\nSTATUS KONSULTASI: Pasien secara spesifik menanyakan herbal *${queriedProduct.name}* (SKU: ${queriedProduct.sku}). Berikan penjelasan klinis yang hangat mengenai khasiat/indikasi utama produk ini, aturan pakai/dosis yang dianjurkan (${queriedProduct.description || ''}), serta tanyakan keluhan atau kondisi yang sedang dialami pasien untuk memastikan kesesuaiannya. Di akhir jawaban, sertakan tag [[RECOMMEND:${queriedProduct.sku}]] agar kartu produk otomatis ditampilkan ke pasien.`;
+      turnGuidance = `\n\nSTATUS KONSULTASI PRODUK SPESIFIK: Pasien sedang mengonsultasikan herbal *${queriedProduct.name}* (SKU: ${queriedProduct.sku}).
+${productSystemPrompt ? `PANDUAN KHUSUS EDUKASI PRODUK: ${productSystemPrompt}\n` : ''}Berikan penjelasan klinis yang hangat, ringkas, dan langsung to-the-point mengenai khasiat utama, aturan pakai/dosis (${queriedProduct.description || ''}), waktu minum terbaik (sebelum/sesudah makan), dan pantangan terkait, TANPA salam basa-basi panjang atau mengulang-ulang detail produk yang sudah jelas. Di akhir jawaban, sertakan tag [[RECOMMEND:${queriedProduct.sku}]] agar kartu produk otomatis ditampilkan ke pasien.`;
     } else if (customerTurnsCount <= 1) {
       turnGuidance = '\n\nSTATUS GILIRAN: Putaran Awal (Turn 1). Berikan empati mendalam + mini-edukasi medis penyebab keluhan ini + ajukan 1 pertanyaan ramah penguat. JANGAN merekomendasikan produk lain di luar keluhan.';
     } else if (customerTurnsCount === 2) {

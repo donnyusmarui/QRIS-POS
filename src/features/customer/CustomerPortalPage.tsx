@@ -5,7 +5,7 @@ import { CustomerCartDrawer } from "./CustomerCartDrawer"
 import { CustomerPaymentModal } from "./CustomerPaymentModal"
 import { CustomerReceiptModal } from "./CustomerReceiptModal"
 import { CustomerChatbotWidget } from "./CustomerChatbotWidget"
-import { parseProductChatConfig } from "@/lib/product-chat-config"
+import { parseProductChatConfig, type MasterProductChatConfig } from "@/lib/product-chat-config"
 import type { Product } from "@/types"
 import {
   QrCode,
@@ -34,6 +34,7 @@ function HerbalDetailModal({
   onAddToCart,
   onConsultProduct,
   formatRupiah,
+  masterConfig,
 }: {
   product: Product | null
   inCartItem?: CartItem
@@ -41,12 +42,15 @@ function HerbalDetailModal({
   onAddToCart: (p: Product) => { success: boolean; message?: string } | void
   onConsultProduct: (p: Product, customPrompt?: string) => void
   formatRupiah: (n: number) => string
+  masterConfig?: MasterProductChatConfig | null
 }) {
   if (!product) return null
   const isOutOfStock = product.stock <= 0
   const isMaxStock = inCartItem ? inCartItem.quantity >= product.stock : false
   const isBtnDisabled = isOutOfStock || isMaxStock
   const { cleanDescription, chatConfig } = parseProductChatConfig(product.description)
+  const isChatVisible = (masterConfig ? masterConfig.masterEnabled : true) && chatConfig.enabled
+  const buttonLabel = chatConfig.buttonText || masterConfig?.defaultButtonText || "Tanya Apoteker"
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200">
@@ -109,7 +113,7 @@ function HerbalDetailModal({
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
-            {chatConfig.enabled && (
+            {isChatVisible && (
               <button
                 type="button"
                 onClick={() => {
@@ -119,7 +123,7 @@ function HerbalDetailModal({
                 className="min-h-[44px] h-11 w-full py-2.5 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-2xs"
               >
                 <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
-                <span>{chatConfig.buttonText} Khasiat Produk Ini</span>
+                <span>{buttonLabel} Khasiat Produk Ini</span>
               </button>
             )}
             <div className="flex gap-2 flex-1">
@@ -170,6 +174,7 @@ function ProductCard({
   onViewDetail,
   onConsultProduct,
   formatRupiah,
+  masterConfig,
 }: {
   product: Product
   inCartItem?: CartItem
@@ -177,6 +182,7 @@ function ProductCard({
   onViewDetail: (p: Product) => void
   onConsultProduct: (p: Product, customPrompt?: string) => void
   formatRupiah: (n: number) => string
+  masterConfig?: MasterProductChatConfig | null
 }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
@@ -184,6 +190,8 @@ function ProductCard({
   const isMaxStock = inCartItem ? inCartItem.quantity >= product.stock : false
   const isBtnDisabled = isOutOfStock || isMaxStock
   const { cleanDescription, chatConfig } = parseProductChatConfig(product.description)
+  const isChatVisible = (masterConfig ? masterConfig.masterEnabled : true) && chatConfig.enabled
+  const buttonLabel = chatConfig.buttonText || masterConfig?.defaultButtonText || "Tanya Apoteker"
 
   // Category Badges based on pathology cluster
   const getCategoryBadge = () => {
@@ -355,7 +363,7 @@ function ProductCard({
           </span>
         </button>
 
-        {chatConfig.enabled && (
+        {isChatVisible && (
           <button
             type="button"
             onClick={() => onConsultProduct(product, chatConfig.customPrompt)}
@@ -363,7 +371,7 @@ function ProductCard({
             className="press-tactile flex w-full min-h-[44px] h-11 items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 bg-stone-50 hover:bg-emerald-50/80 text-stone-700 hover:text-emerald-800 border border-stone-200/80 hover:border-emerald-200 text-[11px] sm:text-xs font-semibold transition active:scale-95 cursor-pointer shadow-2xs"
           >
             <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
-            <span>{chatConfig.buttonText}</span>
+            <span>{buttonLabel}</span>
           </button>
         )}
       </div>
@@ -414,6 +422,16 @@ export function CustomerPortalPage() {
   // State & fetch for active products
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [masterChatConfig, setMasterChatConfig] = useState<MasterProductChatConfig | null>(null)
+
+  useEffect(() => {
+    fetch("/.netlify/functions/chatbot-config-get?type=product_chat")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data) setMasterChatConfig(res.data)
+      })
+      .catch(() => {})
+  }, [])
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true)
@@ -776,6 +794,7 @@ export function CustomerPortalPage() {
                   onViewDetail={(p) => setSelectedProductDetail(p)}
                   onConsultProduct={handleConsultProduct}
                   formatRupiah={formatRupiah}
+                  masterConfig={masterChatConfig}
                 />
               )
             })}
@@ -835,6 +854,7 @@ export function CustomerPortalPage() {
         onAddToCart={addToCart}
         onConsultProduct={handleConsultProduct}
         formatRupiah={formatRupiah}
+        masterConfig={masterChatConfig}
       />
 
       <CustomerCartDrawer

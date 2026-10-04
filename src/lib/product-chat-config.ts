@@ -10,6 +10,32 @@ export const DEFAULT_PRODUCT_CHAT_CONFIG: ProductChatConfig = {
   customPrompt: "",
 }
 
+export interface MasterProductChatConfig {
+  id: string
+  masterEnabled: boolean
+  defaultButtonText: string
+  productGreetingTemplate: string
+  productSystemPrompt: string
+}
+
+export const DEFAULT_MASTER_PRODUCT_CHAT_CONFIG: MasterProductChatConfig = {
+  id: "product_chat",
+  masterEnabled: true,
+  defaultButtonText: "Tanya Apoteker",
+  productGreetingTemplate: "Halo! Ada yang ingin Anda konsultasikan seputar khasiat, aturan minum, atau pantangan dari {product_name}?",
+  productSystemPrompt: "Saat memberikan edukasi produk herbal, selalu jelaskan aturan pakai, waktu konsumsi terbaik (sebelum/sesudah makan), pantangan makanan terkait penyakit, dan tegaskan bahwa herbal merupakan terapi pendamping komplementer (pasien tidak boleh menghentikan resep obat dokter secara mendadak)."
+}
+
+export interface ProductChatOverride {
+  productId: string
+  productName: string
+  sku: string
+  category: string
+  enabled: boolean
+  buttonText: string
+  customPrompt: string
+}
+
 /**
  * Extracts clean description and structured chat configuration from a product description string.
  * Uses a safe HTML-comment wrapper <!--chat:{...}--> to remain 100% DB schema backward-compatible.

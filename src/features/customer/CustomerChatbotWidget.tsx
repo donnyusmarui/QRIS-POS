@@ -21,6 +21,7 @@ import {
   Clock,
   ArrowRight,
 } from "lucide-react"
+import { DEFAULT_MASTER_PRODUCT_CHAT_CONFIG, type MasterProductChatConfig } from "@/lib/product-chat-config"
 
 type SessionStatus = "ai" | "waiting_admin" | "admin" | "closed"
 
@@ -267,6 +268,10 @@ export function CustomerChatbotWidget({
   // Active welcome text from server
   const [serverWelcome, setServerWelcome] = useState<string>(DEFAULT_WELCOME)
 
+  // Active product context for streamlined product consultation
+  const [activeProductContext, setActiveProductContext] = useState<Product | null>(productToConsult || null)
+  const [masterProductChatConfig, setMasterProductChatConfig] = useState<MasterProductChatConfig>(DEFAULT_MASTER_PRODUCT_CHAT_CONFIG)
+
   const { addToCart } = useCustomerCartStore()
   const chatOpenTimeRef = useRef<number>(Date.now())
 
@@ -304,10 +309,11 @@ export function CustomerChatbotWidget({
   useEffect(() => {
     ;(async () => {
       try {
-        const [wRes, cRes, sRes] = await Promise.allSettled([
+        const [wRes, cRes, sRes, pRes] = await Promise.allSettled([
           fetch("/api/welcome-message-active").then((r) => r.json()),
           fetch("/api/chatbot-config-get").then((r) => r.json()),
           fetch("/api/symptom-options-list").then((r) => r.json()),
+          fetch("/api/chatbot-config-get?type=product_chat").then((r) => r.json()),
         ])
 
         if (wRes.status === "fulfilled" && wRes.value?.success && wRes.value.data?.content) {
@@ -318,6 +324,9 @@ export function CustomerChatbotWidget({
         }
         if (sRes.status === "fulfilled" && sRes.value?.success && Array.isArray(sRes.value.data) && sRes.value.data.length > 0) {
           setSymptomList(sRes.value.data)
+        }
+        if (pRes.status === "fulfilled" && pRes.value?.success && pRes.value.data) {
+          setMasterProductChatConfig(pRes.value.data)
         }
       } catch {
         // Fallback default
@@ -548,7 +557,7 @@ export function CustomerChatbotWidget({
     const currentUserMsgs = messages.filter((m) => m.sender === "user").length + 1
     checkMessageCountNudge(currentUserMsgs)
 
-    const activeProd = targetProduct !== undefined ? targetProduct : productToConsult
+    const activeProd = targetProduct !== undefined ? targetProduct : (activeProductContext || productToConsult)
 
     try {
       const res = await fetch("/api/consultation-chat", {
@@ -625,6 +634,8 @@ export function CustomerChatbotWidget({
       setStatus("ai")
       setSelectedSymptoms([])
       setSelectedFollowUp("")
+      setActiveProductContext(null)
+      if (onClearConsultProduct) onClearConsultProduct()
       setMessages([welcomeMessage()])
       chatOpenTimeRef.current = Date.now()
     }
@@ -639,39 +650,67 @@ export function CustomerChatbotWidget({
   const handedOff = status === "waiting_admin" || status === "admin"
 
   // ── TRIGGER KONSULTASI PRODUK SPESIFIK ──
+  const startProductConsultation = useCallback((p: Product, _customPrompt?: string) => {
+    setActiveProductContext(p)
+    setIsOpen(true)
+    setIsMinimized(false)
+    setInputMessage("") // Bersihkan input, jangan isi teks panjang kaku
+    chatOpenTimeRef.current = Date.now()
+
+    const greetingTemplate =
+      masterProductChatConfig?.productGreetingTemplate ||
+      "Halo! Ada yang ingin Anda konsultasikan seputar khasiat, aturan minum, atau pantangan dari {product_name}?"
+    const greetingText = greetingTemplate
+      .replace(/{product_name}/gi, p.name)
+      .replace(/{product_sku}/gi, p.sku)
+      .replace(/{product}/gi, p.name)
+
+    // Buka langsung dengan sapaan produk kontekstual cerdas tanpa salam umum bertele-tele
+    setMessages((prev) => {
+      const hasUserMessage = prev.some((m) => m.sender === "user")
+      if (!hasUserMessage) {
+        return [
+          {
+            id: `prod-welcome-${Date.now()}`,
+            sender: "bot",
+            text: greetingText,
+            timestamp: clock(),
+            animate: false,
+          },
+        ]
+      }
+      return [
+        ...prev,
+        {
+          id: `prod-context-${Date.now()}`,
+          sender: "bot",
+          text: greetingText,
+          timestamp: clock(),
+          animate: false,
+        },
+      ]
+    })
+
+    if (onClearConsultProduct) onClearConsultProduct()
+  }, [masterProductChatConfig, onClearConsultProduct])
+
   useEffect(() => {
     if (productToConsult) {
-      setIsOpen(true)
-      setIsMinimized(false)
-      chatOpenTimeRef.current = Date.now()
-      const defaultPrompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${productToConsult.name}* (SKU: ${productToConsult.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
-      const prompt = customPromptOverride
-        ? customPromptOverride.replace(/{product}/gi, productToConsult.name)
-        : defaultPrompt
-      handleSendMessage(prompt, undefined, productToConsult)
-      if (onClearConsultProduct) onClearConsultProduct()
+      startProductConsultation(productToConsult, customPromptOverride)
     }
-  }, [productToConsult, customPromptOverride, config.pharmacistName])
+  }, [productToConsult, customPromptOverride, startProductConsultation])
 
   useEffect(() => {
     const handleConsultEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ product: Product; prompt?: string }>
       const p = customEvent.detail?.product
       if (!p) return
-
-      setIsOpen(true)
-      setIsMinimized(false)
-      chatOpenTimeRef.current = Date.now()
-      const defaultPrompt = `Halo ${config.pharmacistName || "Apoteker"}, saya ingin konsultasi mengenai herbal *${p.name}* (SKU: ${p.sku}). Apakah herbal ini cocok untuk keluhan saya dan bagaimana dosis serta anjuran pemakaiannya?`
-      const prompt = customEvent.detail?.prompt
-        ? customEvent.detail.prompt.replace(/{product}/gi, p.name)
-        : defaultPrompt
-      handleSendMessage(prompt, undefined, p)
+      startProductConsultation(p, customEvent.detail?.prompt)
     }
 
     window.addEventListener("open-herbal-consultation", handleConsultEvent)
     return () => window.removeEventListener("open-herbal-consultation", handleConsultEvent)
-  }, [config.pharmacistName])
+  }, [startProductConsultation])
 
   const isLeft = config.widgetPosition === "bottom_left"
   const bottomOffset = config.widgetOffsetY ?? 90
@@ -831,6 +870,50 @@ export function CustomerChatbotWidget({
                     className="shrink-0 rounded-lg border border-amber-300 bg-white px-2.5 py-1 font-semibold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
                   >
                     Lanjut dengan AI
+                  </button>
+                </div>
+              )}
+
+              {/* Pinned Product Context Header */}
+              {activeProductContext && (
+                <div className="shrink-0 bg-emerald-50/95 border-b border-emerald-200/90 px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-2xs backdrop-blur-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-white border border-emerald-200/80 shrink-0 flex items-center justify-center shadow-2xs">
+                      {activeProductContext.imageUrl ? (
+                        <img
+                          src={activeProductContext.imageUrl}
+                          alt={activeProductContext.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Leaf className="h-5 w-5 text-emerald-600" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-200">
+                          {activeProductContext.category || "Herbal Alami"}
+                        </span>
+                        <span className="text-[10px] font-mono tabular-nums text-stone-500">
+                          SKU: {activeProductContext.sku}
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-stone-900 truncate leading-snug [text-wrap:balance]">
+                        {activeProductContext.name}
+                      </h4>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveProductContext(null)
+                      if (onClearConsultProduct) onClearConsultProduct()
+                    }}
+                    className="shrink-0 flex items-center gap-1 text-[11px] font-semibold text-stone-500 hover:text-stone-800 bg-white/90 hover:bg-white px-2 py-1 rounded-lg border border-stone-200 transition cursor-pointer shadow-2xs active:scale-95"
+                    title="Lepas konteks konsultasi produk ini"
+                  >
+                    <X className="h-3 w-3" />
+                    <span className="hidden sm:inline">Lepas Konteks</span>
                   </button>
                 </div>
               )}
@@ -1185,27 +1268,86 @@ export function CustomerChatbotWidget({
                 </div>
               )}
 
-              {/* Quick Prompts Bar */}
+              {/* Quick Prompts Bar / Product Quick Action Chips */}
               {!isTriageOpen && (
                 <div className="px-3.5 py-2 border-t border-stone-100 bg-white flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setIsTriageOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-bold shrink-0 transition active:scale-95 cursor-pointer border border-emerald-300"
-                  >
-                    <Activity className="h-3 w-3 text-emerald-700" />
-                    <span>Cek Gejala Interaktif</span>
-                  </button>
-                  {QUICK_PROMPTS.map((p, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSendMessage(p.text)}
-                      className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-medium shrink-0 transition cursor-pointer"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
+                  {activeProductContext ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSendMessage(
+                            `Bagaimana aturan minum dan dosis harian yang tepat untuk ${activeProductContext.name}?`,
+                            undefined,
+                            activeProductContext
+                          )
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-semibold shrink-0 transition active:scale-95 cursor-pointer border border-emerald-300/80 shadow-2xs"
+                      >
+                        <span>💊 Dosis &amp; Aturan Minum</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSendMessage(
+                            `Apa saja pantangan makanan atau interaksi obat yang perlu dihindari saat mengonsumsi ${activeProductContext.name}?`,
+                            undefined,
+                            activeProductContext
+                          )
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-semibold shrink-0 transition active:scale-95 cursor-pointer border border-amber-300/80 shadow-2xs"
+                      >
+                        <span>⚠️ Pantangan Makanan</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSendMessage(
+                            `Apakah herbal ${activeProductContext.name} ini cocok untuk keluhan yang sedang saya rasakan?`,
+                            undefined,
+                            activeProductContext
+                          )
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-800 text-[11px] font-semibold shrink-0 transition active:scale-95 cursor-pointer border border-teal-300/80 shadow-2xs"
+                      >
+                        <span>🩺 Cocok untuk Keluhan Saya?</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleSendMessage(
+                            `Bagaimana legalitas izin BPOM dan khasiat klinis utama dari ${activeProductContext.name}?`,
+                            undefined,
+                            activeProductContext
+                          )
+                        }
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-sky-50 hover:bg-sky-100 text-sky-800 text-[11px] font-semibold shrink-0 transition active:scale-95 cursor-pointer border border-sky-300/80 shadow-2xs"
+                      >
+                        <span>🌿 Legalitas BPOM &amp; Khasiat</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsTriageOpen(true)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-bold shrink-0 transition active:scale-95 cursor-pointer border border-emerald-300"
+                      >
+                        <Activity className="h-3 w-3 text-emerald-700" />
+                        <span>Cek Gejala Interaktif</span>
+                      </button>
+                      {QUICK_PROMPTS.map((p, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSendMessage(p.text)}
+                          className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-medium shrink-0 transition cursor-pointer"
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
 
@@ -1215,14 +1357,14 @@ export function CustomerChatbotWidget({
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ketik keluhan atau pertanyaan Anda di sini..."
+                  placeholder={activeProductContext ? `Tanyakan seputar ${activeProductContext.name}...` : "Ketik keluhan atau pertanyaan Anda di sini..."}
                   className="flex-1 bg-stone-100 rounded-xl px-3.5 py-2.5 text-xs text-stone-800 placeholder-stone-400 focus:outline-emerald-600 focus:bg-white transition"
                   disabled={isTyping}
                 />
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || isTyping}
-                  className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white p-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+                  className="bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white p-2.5 rounded-xl transition shadow-xs active:scale-95 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
                   title="Kirim Pesan"
                 >
                   <Send className="h-4 w-4" />
