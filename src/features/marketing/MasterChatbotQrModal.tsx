@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Store,
 } from "lucide-react"
+import { useStoreProfileStore } from "@/lib/store-profile"
 
 interface MasterChatbotQrModalProps {
   open: boolean
@@ -22,10 +23,13 @@ export function MasterChatbotQrModal({ open, onClose }: MasterChatbotQrModalProp
   const [qrDataUrl, setQrDataUrl] = useState("")
   const [copied, setCopied] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const { storeName, terminology } = useStoreProfileStore()
   const [tableNumber, setTableNumber] = useState("")
-  const [customNote, setCustomNote] = useState("Konsultasi Herbal Gratis dengan Apoteker AI")
+  const [customNote, setCustomNote] = useState(
+    terminology.aiButtonText ? `${terminology.aiButtonText} & Rekomendasi Katalog` : "Konsultasi & Rekomendasi Cerdas AI"
+  )
 
-  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos.netlify.app"
+  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos-id.netlify.app"
   
   const targetUrl = `${baseOrigin}/?openChat=true&utm_source=offline&utm_medium=cashier_desk&utm_campaign=meja_kasir_master${
     tableNumber ? `&table=${encodeURIComponent(tableNumber)}` : ""
@@ -139,13 +143,13 @@ export function MasterChatbotQrModal({ open, onClose }: MasterChatbotQrModalProp
           <div className="flex items-center justify-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-800 px-3 py-1 text-[11px] font-bold text-white shadow-xs">
               <Store className="h-3.5 w-3.5" />
-              <span>APOTEK HERBAL NUSANTARA</span>
+              <span>{(storeName || "KATALOG TOKO RESMI").toUpperCase()}</span>
             </span>
           </div>
 
           <div>
-            <h4 className="text-lg font-bold text-stone-900 tracking-tight">
-              KONSULTASI APOTEKER RAG MASTER
+            <h4 className="text-lg font-bold text-stone-900 tracking-tight uppercase">
+              {terminology.aiPersonaTitle} Master
             </h4>
             <p className="text-xs font-semibold text-emerald-700 mt-0.5">
               {customNote}
@@ -180,7 +184,7 @@ export function MasterChatbotQrModal({ open, onClose }: MasterChatbotQrModalProp
               <span>Arahkan Kamera HP Anda ke QR di atas</span>
             </div>
             <p className="text-[10px] text-stone-500 font-medium">
-              Otomatis terhubung dengan Asisten Farmasi AI &amp; Katalog Resep Herbal
+              Otomatis terhubung dengan {terminology.aiPersonaTitle} &amp; {terminology.catalogHeading}
             </p>
             {tableNumber && (
               <p className="text-xs font-mono font-bold text-emerald-800 mt-1">

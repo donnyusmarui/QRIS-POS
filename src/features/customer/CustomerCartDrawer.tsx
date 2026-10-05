@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useCustomerCartStore } from "@/stores/customer-cart-store"
+import { useStoreProfileStore } from "@/lib/store-profile"
 import {
   X,
   Plus,
@@ -22,6 +23,7 @@ interface CustomerCartDrawerProps {
 }
 
 export function CustomerCartDrawer({ open, onClose, onCheckout, isCheckingOut = false }: CustomerCartDrawerProps) {
+  const { terminology } = useStoreProfileStore()
   const {
     cart,
     customerInfo,
@@ -97,7 +99,7 @@ export function CustomerCartDrawer({ open, onClose, onCheckout, isCheckingOut = 
               </div>
               <p className="text-base font-bold text-stone-900">Keranjang Masih Kosong</p>
               <p className="text-xs text-stone-500 max-w-xs mt-1">
-                Pilih resep herbal alami dari katalog untuk memulai pemesanan.
+                {terminology.cartEmptyText || "Pilih produk dari katalog untuk memulai pemesanan."}
               </p>
             </div>
           ) : (

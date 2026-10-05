@@ -153,7 +153,7 @@ export function MarketingAnalyticsPage() {
   // Generate QR for preview modal
   useEffect(() => {
     if (previewCampaign) {
-      const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos.netlify.app"
+      const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos-id.netlify.app"
       const params = new URLSearchParams()
       params.set("utm_source", previewCampaign.utmSource)
       if (previewCampaign.utmMedium) params.set("utm_medium", previewCampaign.utmMedium)
@@ -707,7 +707,7 @@ export function MarketingAnalyticsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos.netlify.app"
+                  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos-id.netlify.app"
                   const params = new URLSearchParams()
                   params.set("utm_source", previewCampaign.utmSource)
                   if (previewCampaign.utmMedium) params.set("utm_medium", previewCampaign.utmMedium)

@@ -1,5 +1,6 @@
 import { CheckCircle2, Printer, RotateCcw, UtensilsCrossed, ShoppingBag } from "lucide-react"
 import type { CartItem, CustomerInfo, PaymentChannel } from "@/stores/customer-cart-store"
+import { useStoreProfileStore } from "@/lib/store-profile"
 
 interface CustomerReceiptModalProps {
   open: boolean
@@ -21,6 +22,8 @@ export function CustomerReceiptModal({
   onCloseAndReset,
 }: CustomerReceiptModalProps) {
   if (!open) return null
+
+  const { terminology } = useStoreProfileStore()
 
   const formatRupiah = (n: number) =>
     new Intl.NumberFormat("id-ID", {
@@ -61,7 +64,7 @@ export function CustomerReceiptModal({
           </div>
           <h3 className="text-lg sm:text-xl font-black text-stone-900">Pembayaran Berhasil!</h3>
           <p className="text-xs text-stone-500">
-            Pesanan herbal Anda telah dikonfirmasi dan sedang dipersiapkan.
+            {terminology.orderSuccessText || "Pesanan Anda telah dikonfirmasi dan sedang dipersiapkan."}
           </p>
         </div>
 
@@ -108,7 +111,7 @@ export function CustomerReceiptModal({
           {/* Itemized List */}
           <div className="space-y-1.5 pt-1">
             <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block mb-1">
-              Rincian Resep Herbal:
+              {terminology.itemReceiptTitle || "Rincian Pesanan"}:
             </span>
             {items.map((item) => (
               <div key={item.product.id} className="flex justify-between items-center text-xs">
@@ -147,7 +150,7 @@ export function CustomerReceiptModal({
             className="press-tactile flex w-full min-h-[48px] h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 px-4 text-xs font-bold text-white shadow-sm shadow-emerald-700/20 active:scale-[0.98] transition"
           >
             <RotateCcw className="h-4 w-4" />
-            <span>Pesan Herbal Lainnya</span>
+            <span>{terminology.orderMoreText || "Pesan Produk Lainnya"}</span>
           </button>
         </div>
       </div>

@@ -5,7 +5,7 @@ export interface ProductChatConfig {
 }
 
 export const DEFAULT_PRODUCT_CHAT_CONFIG: ProductChatConfig = {
-  buttonText: "Tanya Apoteker",
+  buttonText: "Tanya Asisten AI",
   enabled: true,
   customPrompt: "",
 }
@@ -21,9 +21,9 @@ export interface MasterProductChatConfig {
 export const DEFAULT_MASTER_PRODUCT_CHAT_CONFIG: MasterProductChatConfig = {
   id: "product_chat",
   masterEnabled: true,
-  defaultButtonText: "Tanya Apoteker",
-  productGreetingTemplate: "Halo! Ada yang ingin Anda konsultasikan seputar khasiat, aturan minum, atau pantangan dari {product_name}?",
-  productSystemPrompt: "Saat memberikan edukasi produk herbal, selalu jelaskan aturan pakai, waktu konsumsi terbaik (sebelum/sesudah makan), pantangan makanan terkait penyakit, dan tegaskan bahwa herbal merupakan terapi pendamping komplementer (pasien tidak boleh menghentikan resep obat dokter secara mendadak)."
+  defaultButtonText: "Tanya Asisten AI",
+  productGreetingTemplate: "Halo! Ada yang ingin Anda tanyakan atau konsultasikan seputar produk {product_name}?",
+  productSystemPrompt: "Saat memberikan edukasi atau rekomendasi produk, selalu jelaskan keunggulan produk, spesifikasi, panduan penggunaan yang aman, serta berikan rekomendasi alternatif yang relevan dengan kebutuhan pelanggan secara ramah, profesional, dan solutif."
 }
 
 export interface ProductChatOverride {

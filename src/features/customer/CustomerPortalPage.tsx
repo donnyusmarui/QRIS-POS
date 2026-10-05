@@ -6,6 +6,7 @@ import { CustomerPaymentModal } from "./CustomerPaymentModal"
 import { CustomerReceiptModal } from "./CustomerReceiptModal"
 import { CustomerChatbotWidget } from "./CustomerChatbotWidget"
 import { parseProductChatConfig, type MasterProductChatConfig } from "@/lib/product-chat-config"
+import { useStoreProfileStore } from "@/lib/store-profile"
 import type { Product } from "@/types"
 import {
   QrCode,
@@ -48,9 +49,10 @@ function HerbalDetailModal({
   const isOutOfStock = product.stock <= 0
   const isMaxStock = inCartItem ? inCartItem.quantity >= product.stock : false
   const isBtnDisabled = isOutOfStock || isMaxStock
+  const { terminology, tagline, businessCategory } = useStoreProfileStore()
   const { cleanDescription, chatConfig } = parseProductChatConfig(product.description)
   const isChatVisible = (masterConfig ? masterConfig.masterEnabled : true) && chatConfig.enabled
-  const buttonLabel = chatConfig.buttonText || masterConfig?.defaultButtonText || "Tanya Apoteker"
+  const buttonLabel = chatConfig.buttonText || masterConfig?.defaultButtonText || terminology.aiButtonText || "Tanya Asisten AI"
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200">
@@ -76,13 +78,13 @@ function HerbalDetailModal({
               </div>
             )}
             <span className="absolute top-2.5 left-2.5 rounded-full bg-emerald-700/95 text-white text-[9px] font-bold px-2.5 py-0.5 shadow-2xs flex items-center gap-1 backdrop-blur-xs">
-              <ShieldCheck className="h-3 w-3" /> BPOM Resmi
+              <ShieldCheck className="h-3 w-3" /> {businessCategory === "pharmacy_herbal" ? "BPOM Resmi" : "Terverifikasi"}
             </span>
           </div>
 
           <div className="space-y-2 flex-1">
             <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200/80">
-              {product.category || "Herbal Alami"}
+              {product.category || terminology.allCategoryLabel || "Produk Pilihan"}
             </span>
             <h2 className="text-base sm:text-lg font-bold text-stone-900 leading-snug [text-wrap:balance]">
               {product.name}
@@ -98,17 +100,17 @@ function HerbalDetailModal({
           <div>
             <h4 className="text-xs font-bold text-stone-500 flex items-center gap-1.5 uppercase tracking-wider">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              Informasi Khasiat &amp; Legalitas BPOM
+              {businessCategory === "pharmacy_herbal" ? "Informasi Khasiat & Legalitas BPOM" : "Informasi & Detail Spesifikasi"}
             </h4>
             <div className="mt-2 rounded-2xl bg-[#FDFBF7] border border-stone-200/80 p-4 text-xs text-stone-600 leading-relaxed [text-wrap:pretty]">
-              {cleanDescription || "Suplemen herbal alami berizin resmi BPOM RI untuk mitigasi gangguan sirkulasi darah dan penyakit degeneratif."}
+              {cleanDescription || tagline || "Informasi produk berkualitas tinggi dan siap dipesan."}
             </div>
           </div>
 
           <div className="flex items-center justify-between text-xs text-stone-600 bg-stone-50 p-3.5 rounded-xl border border-stone-200/60">
             <span>Status Ketersediaan:</span>
             <span className={`font-bold ${isOutOfStock ? "text-rose-600" : isMaxStock ? "text-amber-700" : "text-emerald-700"}`}>
-              {isOutOfStock ? "Stok Habis" : isMaxStock ? `Maksimal di Keranjang (${product.stock})` : `Tersedia (${product.stock} kemasan)`}
+              {isOutOfStock ? "Stok Habis" : isMaxStock ? `Maksimal di Keranjang (${product.stock})` : `Tersedia (${product.stock} item)`}
             </span>
           </div>
 
@@ -123,7 +125,7 @@ function HerbalDetailModal({
                 className="min-h-[44px] h-11 w-full py-2.5 px-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-bold hover:bg-emerald-100 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-2xs"
               >
                 <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
-                <span>{buttonLabel} Khasiat Produk Ini</span>
+                <span>{buttonLabel}</span>
               </button>
             )}
             <div className="flex gap-2 flex-1">
@@ -155,7 +157,7 @@ function HerbalDetailModal({
                     ? `Maksimal (${inCartItem?.quantity})`
                     : inCartItem
                     ? `Tambah (${inCartItem.quantity})`
-                    : "+ Beli"}
+                    : (terminology.buyButtonText || "+ Beli")}
                 </span>
               </button>
             </div>
@@ -189,9 +191,10 @@ function ProductCard({
   const isOutOfStock = product.stock <= 0
   const isMaxStock = inCartItem ? inCartItem.quantity >= product.stock : false
   const isBtnDisabled = isOutOfStock || isMaxStock
+  const { terminology, businessCategory } = useStoreProfileStore()
   const { cleanDescription, chatConfig } = parseProductChatConfig(product.description)
   const isChatVisible = (masterConfig ? masterConfig.masterEnabled : true) && chatConfig.enabled
-  const buttonLabel = chatConfig.buttonText || masterConfig?.defaultButtonText || "Tanya Apoteker"
+  const buttonLabel = chatConfig.buttonText || masterConfig?.defaultButtonText || terminology.aiButtonText || "Tanya Asisten AI"
 
   // Category Badges based on pathology cluster
   const getCategoryBadge = () => {
@@ -210,7 +213,7 @@ function ProductCard({
     if (product.category?.includes("Hipertensi")) {
       return { text: "Tensi Darah 💓", bg: "bg-indigo-700 text-white" }
     }
-    return { text: "Herbal Alami 🌿", bg: "bg-emerald-800 text-white" }
+    return { text: product.category || terminology.allCategoryLabel || "Produk Pilihan", bg: "bg-emerald-800 text-white" }
   }
   const badge = getCategoryBadge()
 
@@ -250,7 +253,7 @@ function ProductCard({
             <div className="flex h-full w-full flex-col items-center justify-center p-4 text-emerald-700/60 text-center">
               <Leaf className="h-10 w-10 stroke-[1.5]" />
               <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mt-1">
-                {product.category || "Herbal Alami"}
+                {product.category || terminology.allCategoryLabel || "Produk Pilihan"}
               </span>
             </div>
           )}
@@ -258,7 +261,7 @@ function ProductCard({
           {/* Official Verification Badges */}
           <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1 items-start">
             <span className="rounded-full bg-emerald-700/95 backdrop-blur-xs px-2.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-white shadow-2xs flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" /> BPOM RI ✅
+              <ShieldCheck className="h-3 w-3" /> {businessCategory === "pharmacy_herbal" ? "BPOM RI ✅" : "Terverifikasi ✅"}
             </span>
             <span className={`rounded-full px-2 py-0.5 text-[8px] font-bold shadow-2xs ${badge.bg}`}>
               {badge.text}
@@ -359,7 +362,7 @@ function ProductCard({
               ? `Maksimal (${inCartItem?.quantity})`
               : inCartItem
               ? `Tambah (${inCartItem.quantity})`
-              : "+ Beli Herbal"}
+              : (terminology.buyButtonText || "+ Beli Sekarang")}
           </span>
         </button>
 
@@ -367,7 +370,7 @@ function ProductCard({
           <button
             type="button"
             onClick={() => onConsultProduct(product, chatConfig.customPrompt)}
-            title={`Konsultasi Apoteker seputar khasiat ${product.name}`}
+            title={`${terminology.aiButtonText || "Tanya Asisten AI"} seputar ${product.name}`}
             className="press-tactile flex w-full min-h-[44px] h-11 items-center justify-center gap-1.5 rounded-xl py-2 px-2.5 bg-stone-50 hover:bg-emerald-50/80 text-stone-700 hover:text-emerald-800 border border-stone-200/80 hover:border-emerald-200 text-[11px] sm:text-xs font-semibold transition active:scale-95 cursor-pointer shadow-2xs"
           >
             <Bot className="h-4 w-4 text-emerald-700 shrink-0" />
@@ -382,6 +385,7 @@ function ProductCard({
 // ─── Master Customer Portal Page ───
 export function CustomerPortalPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { storeName, tagline, businessCategory, terminology, renderTemplate } = useStoreProfileStore()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -483,8 +487,8 @@ export function CustomerPortalPage() {
               utmSource: utmSource || "direct",
               utmCampaign: utmCampaign || undefined,
               promoCode: promoCode || undefined,
-              bannerMessage: `Halo Pengunjung dari ${utmSource ? utmSource.toUpperCase() : "Media Digital"}! Selamat datang di Apotek Herbal Nusantara.`,
-              customGreeting: `Halo! Senang Anda berkunjung melalui promosi ${utmSource || "kami"}. Ada keluhan kesehatan herbal yang ingin dikonsultasikan?`,
+              bannerMessage: renderTemplate(terminology.bannerGreetingTemplate, utmSource ? utmSource.toUpperCase() : "Media Digital"),
+              customGreeting: renderTemplate(terminology.botGreetingTemplate, utmSource || "kami"),
             }
             setActiveCampaign(fallbackCamp)
             sessionStorage.setItem("active_marketing_campaign", JSON.stringify(fallbackCamp))
@@ -600,7 +604,7 @@ export function CustomerPortalPage() {
 
   // Category labels with thematic icons
   const getCategoryLabel = (cat: string) => {
-    if (cat === "all") return "Semua Herbal 🌿"
+    if (cat === "all") return terminology.allCategoryLabel || "Semua Produk"
     if (cat.includes("Kolesterol")) return "Kolesterol & Jantung 🫀"
     if (cat.includes("Darah Kental")) return "Darah Kental & Sirkulasi 🩸"
     if (cat.includes("Asam Urat")) return "Asam Urat & Sendi 🦶"
@@ -639,7 +643,7 @@ export function CustomerPortalPage() {
           campaignId: activeCampaign?.id || undefined,
           utmCampaign: activeCampaign?.utmCampaign || undefined,
           utmSource: activeCampaign?.utmSource || undefined,
-          notes: `${customerInfo.orderType === "dine_in" ? `[Ambil di Apotek / Meja ${customerInfo.tableNumber || "-"}]` : "[Bawa Pulang / Kirim]"} Pemesan: ${customerInfo.name} (${customerInfo.phone || "No WA"})`,
+          notes: `${customerInfo.orderType === "dine_in" ? `[Di Tempat / Meja ${customerInfo.tableNumber || "-"}]` : "[Bawa Pulang / Kirim]"} Pemesan: ${customerInfo.name} (${customerInfo.phone || "No WA"})`,
           items: cart.map((item) => ({
             productId: item.product.id,
             productName: item.product.name,
@@ -725,7 +729,7 @@ export function CustomerPortalPage() {
               </span>
               <p className="font-medium text-emerald-50 truncate sm:whitespace-normal">
                 {activeCampaign.bannerMessage ||
-                  `Halo Pengunjung dari ${activeCampaign.channel?.toUpperCase() || "Iklan"}! Selamat datang di Apotek Herbal Nusantara.`}
+                  renderTemplate(terminology.bannerGreetingTemplate, activeCampaign.channel?.toUpperCase() || "Iklan")}
               </p>
               {activeCampaign.promoCode && (
                 <span className="hidden sm:inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-mono font-black text-[11px] px-2 py-0.5 rounded-md shadow-2xs shrink-0">
@@ -752,10 +756,10 @@ export function CustomerPortalPage() {
         </div>
       )}
 
-      {/* ── HEADER (Apotek Herbal Navigation) ── */}
+      {/* ── HEADER (Store Navigation) ── */}
       <header className="sticky top-0 z-30 bg-[#FBF9F5]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 transition-all">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
-          {/* Logo & Info Apotek */}
+          {/* Logo & Info Toko */}
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-xs">
               <QrCode className="h-6 w-6" />
@@ -767,11 +771,11 @@ export function CustomerPortalPage() {
                 </span>
                 <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Buka • Apotek Medika
+                  Buka • {storeName}
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 font-medium hidden sm:block">
-                Katalog Resep Alami Terstandar BPOM &amp; Halal
+                {tagline}
               </p>
             </div>
           </div>
@@ -852,19 +856,21 @@ export function CustomerPortalPage() {
           </div>
         )}
 
-        {/* ── APOTEK HERBAL HERO BANNER ── */}
+        {/* ── STORE HERO BANNER ── */}
         <div className="rounded-3xl border border-emerald-200/70 bg-gradient-to-br from-emerald-50/80 via-stone-50/60 to-[#FDFBF7] p-5 sm:p-8 shadow-xs">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2.5 max-w-xl">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-100/70 px-3 py-1 text-xs font-bold text-emerald-800 shadow-2xs">
                 <Leaf className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Resmi Terdaftar BPOM RI &amp; Bersertifikat Halal</span>
+                <span>{businessCategory === "pharmacy_herbal" ? "Resmi Terdaftar BPOM RI & Bersertifikat Halal" : "Katalog Toko Resmi & Terverifikasi"}</span>
               </div>
               <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold text-stone-900 tracking-tight [text-wrap:balance]">
-                Mitigasi Penyakit Degeneratif &amp; Kualitas Darah 🌿
+                {businessCategory === "pharmacy_herbal" ? "Mitigasi Penyakit Degeneratif & Kualitas Darah 🌿" : storeName}
               </h1>
               <p className="text-xs sm:text-sm text-stone-600 leading-relaxed [text-wrap:pretty]">
-                Pilihan suplemen fitofarmaka dan ekstrak herbal berkhasiat untuk terapi pendamping <b>Kolesterol Tinggi</b>, <b>Darah Kental</b>, <b>Asam Urat</b>, <b>Diabetes Tipe 2</b>, dan <b>Hipertensi</b>. Transaksi mudah dengan <b>QRIS Dinamis</b>, <b>Transfer Bank</b>, atau <b>GoPay</b>.
+                {businessCategory === "pharmacy_herbal"
+                  ? "Pilihan suplemen fitofarmaka dan ekstrak herbal berkhasiat untuk terapi pendamping Kolesterol Tinggi, Darah Kental, Asam Urat, Diabetes Tipe 2, dan Hipertensi. Transaksi mudah dengan QRIS Dinamis, Transfer Bank, atau GoPay."
+                  : (tagline || "Pilihan produk berkualitas dengan transaksi mudah dan aman melalui QRIS Dinamis, Transfer Bank, atau E-Wallet.")}
               </p>
             </div>
 
@@ -875,8 +881,8 @@ export function CustomerPortalPage() {
                   <ShieldCheck className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-stone-900">100% BPOM RI</p>
-                  <p className="text-[10px] text-stone-500 font-normal">Bebas BKO</p>
+                  <p className="text-xs font-bold text-stone-900">{businessCategory === "pharmacy_herbal" ? "100% BPOM RI" : "100% Asli"}</p>
+                  <p className="text-[10px] text-stone-500 font-normal">{businessCategory === "pharmacy_herbal" ? "Bebas BKO" : "Terjamin"}</p>
                 </div>
               </div>
 
@@ -902,7 +908,7 @@ export function CustomerPortalPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari produk herbal, no. BPOM, atau keluhan (kolesterol, asam urat, tensi, gula)..."
+              placeholder={terminology.searchPlaceholder || "Cari produk, kategori, atau barcode..."}
               className="w-full h-12 pl-11 pr-12 rounded-2xl border border-stone-200/80 bg-white text-xs sm:text-sm font-medium text-stone-900 placeholder:text-stone-400 shadow-2xs focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/10 focus:outline-none transition"
             />
             {searchQuery && (
@@ -935,20 +941,20 @@ export function CustomerPortalPage() {
           </div>
         </div>
 
-        {/* ── HERBAL PRODUCT GRID (Adaptive 2-col on mobile, 4-col on desktop) ── */}
+        {/* ── PRODUCT GRID (Adaptive 2-col on mobile, 4-col on desktop) ── */}
         {isLoading ? (
           <div className="flex h-72 flex-col items-center justify-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
             <span className="text-xs font-bold text-stone-500">
-              Menyiapkan Katalog Apotek Herbal...
+              Menyiapkan {terminology.catalogHeading || "Katalog Produk"}...
             </span>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-stone-200 bg-white p-6 text-center">
             <BadgeAlert className="h-10 w-10 text-stone-400 mb-2" />
-            <p className="text-sm font-bold text-stone-900">Produk Herbal Tidak Ditemukan</p>
+            <p className="text-sm font-bold text-stone-900">Produk Tidak Ditemukan</p>
             <p className="text-xs text-stone-500 mt-1 max-w-sm">
-              Tidak ada produk yang cocok dengan pencarian "{searchQuery}". Coba gunakan kata kunci gejala seperti "asam urat", "kolesterol", "tensi", atau "gula darah".
+              Tidak ada produk yang cocok dengan pencarian "{searchQuery}". Silakan coba kata kunci lain atau pilih dari kategori yang tersedia.
             </p>
           </div>
         ) : (
@@ -982,7 +988,7 @@ export function CustomerPortalPage() {
               </div>
               <div>
                 <p className="text-[11px] text-stone-400 font-medium leading-none">
-                  Total Pesanan Herbal
+                  Total Pesanan
                 </p>
                 <p className="text-sm sm:text-base font-bold text-amber-300 mt-1 tabular-nums font-mono">
                   {formatRupiah(getSubtotal())}
@@ -1008,7 +1014,7 @@ export function CustomerPortalPage() {
           <div className="flex items-center gap-2">
             <span className="font-bold text-[#181512]">QRIS-POS</span>
             <span>•</span>
-            <span>Apotek &amp; Resep Herbal Medika E-Katalog</span>
+            <span>{storeName} • {terminology.catalogHeading || "E-Katalog"}</span>
           </div>
           <p className="text-[11px] text-[#A8A29E]">
             Mendukung Pembayaran QRIS Nasional, Transfer Bank VA (BCA, Mandiri, BRI, BNI), &amp; GoPay

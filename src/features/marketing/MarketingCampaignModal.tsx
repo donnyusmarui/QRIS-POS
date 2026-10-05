@@ -12,6 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react"
 import type { Product } from "@/types"
+import { useStoreProfileStore } from "@/lib/store-profile"
 
 export type MarketingChannel =
   | "tiktok"
@@ -193,16 +194,18 @@ export function MarketingCampaignModal({
     }
   }
 
+  const { terminology, renderTemplate } = useStoreProfileStore()
+
   // Auto-suggest smart greeting & banner if empty
   const handleAutoSuggestCopy = () => {
     const channelName = CHANNEL_CONFIG[channel].label
     const promoText = promoCode ? ` Gunakan kode voucher [${promoCode.toUpperCase()}] untuk diskon eksklusif.` : ""
-    setBannerMessage(`Halo Pengunjung dari ${channelName}! Selamat datang di Apotek Herbal Nusantara.${promoText}`)
-    setCustomGreeting(`Halo! Senang Anda berkunjung melalui ${channelName}. Ada keluhan kesehatan herbal atau rekomendasi produk yang ingin dikonsultasikan hari ini?`)
+    setBannerMessage(`${renderTemplate(terminology.bannerGreetingTemplate, channelName)}${promoText}`)
+    setCustomGreeting(renderTemplate(terminology.botGreetingTemplate, channelName))
   }
 
   // Construct target URL
-  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos.netlify.app"
+  const baseOrigin = typeof window !== "undefined" ? window.location.origin : "https://qris-herbal-pos-id.netlify.app"
   const targetUrl = useMemo(() => {
     const params = new URLSearchParams()
     if (utmSource) params.set("utm_source", utmSource.toLowerCase())
@@ -496,7 +499,7 @@ export function MarketingCampaignModal({
                     onChange={() => setTargetType("portal")}
                     className="accent-emerald-600"
                   />
-                  <span>Halaman Utama Portal Herbal (Semua Produk)</span>
+                  <span>{terminology.catalogHeading || "Halaman Katalog Toko"} (Semua Produk)</span>
                 </label>
                 <label className="flex items-center gap-2 text-xs font-medium text-stone-700 cursor-pointer">
                   <input
@@ -506,7 +509,7 @@ export function MarketingCampaignModal({
                     onChange={() => setTargetType("product")}
                     className="accent-emerald-600"
                   />
-                  <span>Produk Herbal Tertentu (Deep-link &amp; Konsultasi)</span>
+                  <span>{terminology.singleProductHeading || "Produk Spesifik (Deep-link & Konsultasi)"}</span>
                 </label>
               </div>
 
@@ -517,7 +520,7 @@ export function MarketingCampaignModal({
                     onChange={(e) => setTargetProductId(e.target.value)}
                     className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs focus:border-emerald-500 focus:outline-none"
                   >
-                    <option value="">-- Pilih Produk Herbal Target --</option>
+                    <option value="">-- Pilih {terminology.singleProductHeading.includes("Menu") ? "Menu" : "Produk"} Target --</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name} ({p.sku}) - Rp {p.price.toLocaleString("id-ID")}
@@ -550,7 +553,7 @@ export function MarketingCampaignModal({
                 </label>
                 <input
                   type="text"
-                  placeholder="Misal: Halo Pengguna TikTok! Selamat datang di Apotek Herbal..."
+                  placeholder={`Misal: ${renderTemplate(terminology.bannerGreetingTemplate, CHANNEL_CONFIG[channel].label)}`}
                   value={bannerMessage}
                   onChange={(e) => setBannerMessage(e.target.value)}
                   className="w-full rounded-xl border border-stone-200 px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"
@@ -563,7 +566,7 @@ export function MarketingCampaignModal({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Misal: Halo! Senang Anda berkunjung dari video TikTok kami. Ada keluhan herbal yang bisa kami bantu?"
+                  placeholder={`Misal: ${renderTemplate(terminology.botGreetingTemplate, CHANNEL_CONFIG[channel].label)}`}
                   value={customGreeting}
                   onChange={(e) => setCustomGreeting(e.target.value)}
                   className="w-full rounded-xl border border-stone-200 px-3 py-1.5 text-xs focus:border-emerald-500 focus:outline-none"

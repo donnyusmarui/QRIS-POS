@@ -22,6 +22,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { DEFAULT_MASTER_PRODUCT_CHAT_CONFIG, type MasterProductChatConfig } from "@/lib/product-chat-config"
+import { useStoreProfileStore } from "@/lib/store-profile"
 
 type SessionStatus = "ai" | "waiting_admin" | "admin" | "closed"
 
@@ -242,6 +243,7 @@ export function CustomerChatbotWidget({
   campaignContext,
   onFirstEngagement,
 }: CustomerChatbotWidgetProps) {
+  const { storeName, businessCategory, terminology } = useStoreProfileStore()
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const [inputMessage, setInputMessage] = useState("")
@@ -507,7 +509,9 @@ export function CustomerChatbotWidget({
 
     // Notify user via bot
     pushBot(
-      `Terima kasih Kak ${name}! Riwayat konsultasi & rekomendasi resep herbal Anda telah kami amankan untuk pengiriman via WhatsApp (${phone}) 🌿 Mari kita lanjutkan ikhtiar sehat ini.`,
+      businessCategory === "pharmacy_herbal"
+        ? `Terima kasih Kak ${name}! Riwayat konsultasi & rekomendasi resep herbal Anda telah kami amankan untuk pengiriman via WhatsApp (${phone}) 🌿 Mari kita lanjutkan ikhtiar sehat ini.`
+        : `Terima kasih Kak ${name}! Riwayat rekomendasi produk Anda telah kami simpan untuk pengiriman via WhatsApp (${phone}). Ada yang ingin Anda tanyakan lagi?`,
       undefined,
       true,
     )
@@ -725,8 +729,12 @@ export function CustomerChatbotWidget({
       startProductConsultation(p, customEvent.detail?.prompt)
     }
 
+    window.addEventListener("open-product-consultation", handleConsultEvent)
     window.addEventListener("open-herbal-consultation", handleConsultEvent)
-    return () => window.removeEventListener("open-herbal-consultation", handleConsultEvent)
+    return () => {
+      window.removeEventListener("open-product-consultation", handleConsultEvent)
+      window.removeEventListener("open-herbal-consultation", handleConsultEvent)
+    }
   }, [startProductConsultation])
 
   const isLeft = config.widgetPosition === "bottom_left"
@@ -735,7 +743,7 @@ export function CustomerChatbotWidget({
 
   return (
     <aside
-      aria-label="Widget Konsultasi Herbal & Resep"
+      aria-label={terminology.aiPersonaTitle || "Widget Asisten Toko AI"}
       className={`relative z-40 transition-opacity duration-200 ${
         isCartOpen ? "invisible pointer-events-none opacity-0" : "visible opacity-100"
       }`}
@@ -755,7 +763,7 @@ export function CustomerChatbotWidget({
             [isLeft ? "left" : "right"]: `${sideOffset}px`,
           }}
           className="fixed z-40 flex items-center gap-2.5 rounded-full bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 px-4 py-3.5 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 ring-2 ring-emerald-600/30 group cursor-pointer"
-          aria-label={config.widgetButtonText || "Konsultasi Apoteker"}
+          aria-label={config.widgetButtonText || terminology.aiButtonText || "Tanya Asisten AI"}
         >
           <div className="relative">
             <div className="h-8 w-8 rounded-full overflow-hidden bg-white/20 ring-1 ring-white/40 flex items-center justify-center">
@@ -769,10 +777,12 @@ export function CustomerChatbotWidget({
           </div>
           <div className="text-left hidden sm:block pr-1">
             <p className="text-xs font-bold leading-tight flex items-center gap-1.5">
-              <span>{config.widgetButtonText || "Konsultasi Apoteker"}</span>
+              <span>{config.widgetButtonText || terminology.aiButtonText || "Tanya Asisten AI"}</span>
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </p>
-            <p className="text-[10px] text-emerald-200">{config.pharmacistName}</p>
+            <p className="text-[10px] text-emerald-200">
+              {businessCategory === "pharmacy_herbal" ? config.pharmacistName : (terminology.aiPersonaTitle || "Asisten AI")}
+            </p>
           </div>
         </button>
       )}
@@ -781,7 +791,7 @@ export function CustomerChatbotWidget({
       {isOpen && (
         <div
           role="region"
-          aria-label="Jendela Chatbot Herbal"
+          aria-label={`Jendela Chatbot ${storeName}`}
           style={
             isMinimized
               ? {
@@ -811,7 +821,7 @@ export function CustomerChatbotWidget({
               </div>
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-white leading-tight flex items-center gap-1.5 truncate">
-                  <span className="truncate">{status === "admin" ? "Admin Apotek (Live)" : config.pharmacistName}</span>
+                  <span className="truncate">{status === "admin" ? `Admin ${storeName} (Live)` : (config.pharmacistName || terminology.aiPersonaTitle)}</span>
                   {customerLead?.name && (
                     <span className="text-[10px] font-normal text-emerald-200 bg-white/15 px-1.5 py-0.5 rounded-md shrink-0">
                       Kak {customerLead.name}
@@ -917,7 +927,7 @@ export function CustomerChatbotWidget({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-200">
-                          {activeProductContext.category || "Herbal Alami"}
+                          {activeProductContext.category || terminology.allCategoryLabel || "Produk"}
                         </span>
                         <span className="text-[10px] font-mono tabular-nums text-stone-500">
                           SKU: {activeProductContext.sku}
@@ -951,7 +961,7 @@ export function CustomerChatbotWidget({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 text-amber-950 font-bold">
                         <HeartHandshake className="h-4 w-4 text-emerald-700 shrink-0" />
-                        <span className="leading-snug">Ingin Rangkuman Resep Herbal Ini Dikirimkan ke Anda?</span>
+                        <span className="leading-snug">Ingin Rangkuman Rekomendasi Produk Ini Dikirimkan ke Anda?</span>
                       </div>
                       <button
                         type="button"
@@ -963,7 +973,7 @@ export function CustomerChatbotWidget({
                       </button>
                     </div>
                     <p className="text-stone-700 leading-relaxed text-[11px]">
-                      Simpan riwayat konsultasi Anda agar kami dapat mengirimkan salinan rekomendasi herbal, dosis aman, dan panduan pola makan personal langsung ke WhatsApp Anda tanpa biaya.
+                      Simpan riwayat konsultasi Anda agar kami dapat mengirimkan salinan rekomendasi produk, spesifikasi, dan panduan lengkap langsung ke WhatsApp Anda tanpa biaya.
                     </p>
                     <form onSubmit={handleSaveNudge} className="space-y-2 pt-1">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1093,7 +1103,7 @@ export function CustomerChatbotWidget({
                     )}
                     {m.sender === "admin" && (
                       <span className="mb-1 px-1 text-[10px] font-semibold text-amber-700 flex items-center gap-1">
-                        <Headset className="h-3 w-3" /> Admin Apotek
+                        <Headset className="h-3 w-3" /> Admin {storeName || "Toko"}
                       </span>
                     )}
 
@@ -1328,14 +1338,16 @@ export function CustomerChatbotWidget({
                         type="button"
                         onClick={() =>
                           handleSendMessage(
-                            `Apakah herbal ${activeProductContext.name} ini cocok untuk keluhan yang sedang saya rasakan?`,
+                            businessCategory === "pharmacy_herbal"
+                              ? `Apakah herbal ${activeProductContext.name} ini cocok untuk keluhan yang sedang saya rasakan?`
+                              : `Apakah produk ${activeProductContext.name} ini cocok untuk kebutuhan saya?`,
                             undefined,
                             activeProductContext
                           )
                         }
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-800 text-[11px] font-semibold shrink-0 transition active:scale-95 cursor-pointer border border-teal-300/80 shadow-2xs"
                       >
-                        <span>🩺 Cocok untuk Keluhan Saya?</span>
+                        <span>🩺 Cocok untuk Kebutuhan Saya?</span>
                       </button>
                       <button
                         type="button"
