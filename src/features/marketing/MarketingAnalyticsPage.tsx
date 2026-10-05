@@ -216,10 +216,10 @@ export function MarketingAnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black tracking-tight text-stone-900">
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900">
               Smart QR &amp; Marketing Tracking
             </h1>
-            <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2.5 py-0.5">
+            <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 border border-emerald-200/60">
               MarTech Suite
             </span>
           </div>
@@ -280,25 +280,25 @@ export function MarketingAnalyticsPage() {
         {/* Stage 1: Scans */}
         <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-stone-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">1. Total Scan / Kunjungan</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">1. Total Scan / Kunjungan</span>
             <Eye className="h-4 w-4 text-emerald-600" />
           </div>
-          <p className="text-2xl font-black text-stone-900 tabular-nums">
+          <p className="text-2xl font-bold tracking-tight text-stone-900 tabular-nums font-numeric mt-2">
             {summary.totalScans.toLocaleString("id-ID")}
           </p>
-          <p className="text-[10px] text-stone-400 font-medium">Pemindaian QR &amp; klik link iklan</p>
+          <p className="text-[11px] text-stone-500 font-medium">Pemindaian QR &amp; klik link iklan</p>
         </div>
 
         {/* Stage 2: Chat Engagement */}
         <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-stone-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">2. Chatbot AI</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">2. Chatbot AI</span>
             <MessageSquare className="h-4 w-4 text-emerald-600" />
           </div>
-          <p className="text-2xl font-black text-emerald-700 tabular-nums">
+          <p className="text-2xl font-bold tracking-tight text-emerald-700 tabular-nums font-numeric mt-2">
             {summary.totalChats.toLocaleString("id-ID")}
           </p>
-          <p className="text-[10px] text-emerald-600 font-semibold">
+          <p className="text-[11px] text-emerald-600 font-medium">
             {chatEngagementRate}% engagement rate
           </p>
         </div>
@@ -306,13 +306,13 @@ export function MarketingAnalyticsPage() {
         {/* Stage 3: Add to Cart */}
         <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-stone-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">3. Keranjang</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">3. Keranjang</span>
             <ShoppingCart className="h-4 w-4 text-amber-600" />
           </div>
-          <p className="text-2xl font-black text-amber-700 tabular-nums">
+          <p className="text-2xl font-bold tracking-tight text-amber-700 tabular-nums font-numeric mt-2">
             {summary.totalCarts.toLocaleString("id-ID")}
           </p>
-          <p className="text-[10px] text-amber-600 font-semibold">
+          <p className="text-[11px] text-amber-600 font-medium">
             {cartConversionRate}% cart conversion
           </p>
         </div>
@@ -320,27 +320,27 @@ export function MarketingAnalyticsPage() {
         {/* Stage 4: Checkout */}
         <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-stone-500">
-            <span className="text-[11px] font-bold uppercase tracking-wider">4. Transaksi Lunas</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">4. Transaksi Lunas</span>
             <TrendingUp className="h-4 w-4 text-blue-600" />
           </div>
-          <p className="text-2xl font-black text-blue-700 tabular-nums">
+          <p className="text-2xl font-bold tracking-tight text-blue-700 tabular-nums font-numeric mt-2">
             {summary.totalCheckouts.toLocaleString("id-ID")}
           </p>
-          <p className="text-[10px] text-blue-600 font-semibold">
+          <p className="text-[11px] text-blue-600 font-medium">
             {overallConversionRate}% ROI konversi
           </p>
         </div>
 
         {/* Bottom Funnel: Revenue Attribution */}
-        <div className="col-span-2 md:col-span-1 rounded-2xl border-2 border-emerald-600/30 bg-linear-to-b from-emerald-50/70 to-white p-4 shadow-xs space-y-1">
+        <div className="col-span-2 md:col-span-1 rounded-2xl border border-emerald-300 bg-linear-to-b from-emerald-50/70 to-white p-4 shadow-xs space-y-1">
           <div className="flex items-center justify-between text-emerald-800">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider">Omzet Atribusi Iklan</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Omzet Atribusi Iklan</span>
             <DollarSign className="h-4 w-4 text-emerald-700" />
           </div>
-          <p className="text-xl font-black text-emerald-900 tabular-nums">
+          <p className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-900 tabular-nums font-numeric mt-2">
             {formatRupiah(summary.totalRevenue)}
           </p>
-          <p className="text-[10px] text-emerald-700 font-semibold">
+          <p className="text-[11px] text-emerald-700 font-medium">
             Dari {summary.totalCampaigns} kampanye aktif
           </p>
         </div>
@@ -363,9 +363,9 @@ export function MarketingAnalyticsPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 pt-1">
           {/* Top Funnel: Scans */}
           <div className="relative rounded-xl bg-stone-100 p-3 border border-stone-200">
-            <div className="text-[10px] font-bold uppercase text-stone-500">Top Funnel</div>
-            <div className="text-sm font-black text-stone-900 mt-1">1. Scan QR / Kunjungan</div>
-            <div className="text-lg font-black text-stone-900 tabular-nums mt-0.5">{summary.totalScans}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-stone-500">Top Funnel</div>
+            <div className="text-xs font-bold text-stone-900 mt-1">1. Scan QR / Kunjungan</div>
+            <div className="text-lg font-bold text-stone-900 tabular-nums font-numeric mt-0.5">{summary.totalScans}</div>
             <div className="w-full bg-stone-300 h-1.5 rounded-full mt-2 overflow-hidden">
               <div className="bg-stone-700 h-full w-full" />
             </div>
@@ -373,9 +373,9 @@ export function MarketingAnalyticsPage() {
 
           {/* Engagement Funnel: AI Chat */}
           <div className="relative rounded-xl bg-emerald-50/70 p-3 border border-emerald-200">
-            <div className="text-[10px] font-bold uppercase text-emerald-700">Engagement</div>
-            <div className="text-sm font-black text-emerald-950 mt-1">2. Percakapan AI RAG</div>
-            <div className="text-lg font-black text-emerald-800 tabular-nums mt-0.5">{summary.totalChats}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Engagement</div>
+            <div className="text-xs font-bold text-emerald-950 mt-1">2. Percakapan AI RAG</div>
+            <div className="text-lg font-bold text-emerald-800 tabular-nums font-numeric mt-0.5">{summary.totalChats}</div>
             <div className="w-full bg-emerald-200 h-1.5 rounded-full mt-2 overflow-hidden">
               <div
                 className="bg-emerald-600 h-full"
@@ -386,9 +386,9 @@ export function MarketingAnalyticsPage() {
 
           {/* Intent Funnel: Cart */}
           <div className="relative rounded-xl bg-amber-50/70 p-3 border border-amber-200">
-            <div className="text-[10px] font-bold uppercase text-amber-700">Purchase Intent</div>
-            <div className="text-sm font-black text-amber-950 mt-1">3. Tambah ke Keranjang</div>
-            <div className="text-lg font-black text-amber-800 tabular-nums mt-0.5">{summary.totalCarts}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Purchase Intent</div>
+            <div className="text-xs font-bold text-amber-950 mt-1">3. Tambah ke Keranjang</div>
+            <div className="text-lg font-bold text-amber-800 tabular-nums font-numeric mt-0.5">{summary.totalCarts}</div>
             <div className="w-full bg-amber-200 h-1.5 rounded-full mt-2 overflow-hidden">
               <div
                 className="bg-amber-600 h-full"
@@ -399,9 +399,9 @@ export function MarketingAnalyticsPage() {
 
           {/* Bottom Funnel: Paid Sales */}
           <div className="relative rounded-xl bg-blue-50/70 p-3 border border-blue-200">
-            <div className="text-[10px] font-bold uppercase text-blue-700">Bottom Funnel</div>
-            <div className="text-sm font-black text-blue-950 mt-1">4. Penjualan Berhasil</div>
-            <div className="text-lg font-black text-blue-800 tabular-nums mt-0.5">{summary.totalCheckouts}</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Bottom Funnel</div>
+            <div className="text-xs font-bold text-blue-950 mt-1">4. Penjualan Berhasil</div>
+            <div className="text-lg font-bold text-blue-800 tabular-nums font-numeric mt-0.5">{summary.totalCheckouts}</div>
             <div className="w-full bg-blue-200 h-1.5 rounded-full mt-2 overflow-hidden">
               <div
                 className="bg-blue-600 h-full"
@@ -583,7 +583,7 @@ export function MarketingAnalyticsPage() {
                       </td>
 
                       {/* Attributed Revenue */}
-                      <td className="px-4 py-3.5 text-right font-black text-emerald-800 tabular-nums text-sm">
+                      <td className="px-4 py-3.5 text-right font-bold text-emerald-800 tabular-nums font-numeric text-sm">
                         {formatRupiah(camp.revenueAttributed || 0)}
                       </td>
 

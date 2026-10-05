@@ -399,7 +399,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex-1 space-y-5 overflow-y-auto px-3.5 py-5">
             {/* Group 1: Operasional Kasir */}
             <div>
-              <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A8A29E]">
+              <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-[#A8A29E]">
                 Operasional Kasir
               </p>
               <nav className="space-y-1">
@@ -410,10 +410,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       key={item.href}
                       to={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`press-tactile flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
+                      className={`press-tactile flex items-center gap-3 rounded-xl px-3 py-2 text-xs transition-all ${
                         isActive
-                          ? "bg-[#FFF2ED] text-[#FF5A2B] shadow-2xs"
-                          : "text-[#57534E] hover:bg-[#FDFBF7] hover:text-[#181512]"
+                          ? "bg-[#FFF2ED] text-[#FF5A2B] font-bold shadow-2xs"
+                          : "text-[#57534E] font-medium hover:bg-[#FDFBF7] hover:text-[#181512]"
                       }`}
                     >
                       <span className={isActive ? "text-[#FF5A2B]" : "text-[#78716C]"}>{item.icon}</span>
@@ -426,7 +426,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Group 2: Manajemen Toko */}
             <div>
-              <p className="px-3 mb-2 text-[10px] font-black uppercase tracking-wider text-[#A8A29E]">
+              <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-[#A8A29E]">
                 Manajemen Toko
               </p>
               <nav className="space-y-1">
@@ -437,10 +437,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       key={item.href}
                       to={item.href}
                       onClick={() => setSidebarOpen(false)}
-                      className={`press-tactile flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
+                      className={`press-tactile flex items-center gap-3 rounded-xl px-3 py-2 text-xs transition-all ${
                         isActive
-                          ? "bg-[#FFF2ED] text-[#FF5A2B] shadow-2xs"
-                          : "text-[#57534E] hover:bg-[#FDFBF7] hover:text-[#181512]"
+                          ? "bg-[#FFF2ED] text-[#FF5A2B] font-bold shadow-2xs"
+                          : "text-[#57534E] font-medium hover:bg-[#FDFBF7] hover:text-[#181512]"
                       }`}
                     >
                       <span className={isActive ? "text-[#FF5A2B]" : "text-[#78716C]"}>{item.icon}</span>

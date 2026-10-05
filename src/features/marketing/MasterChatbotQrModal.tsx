@@ -144,7 +144,7 @@ export function MasterChatbotQrModal({ open, onClose }: MasterChatbotQrModalProp
           </div>
 
           <div>
-            <h4 className="text-lg font-black text-stone-900 tracking-tight">
+            <h4 className="text-lg font-bold text-stone-900 tracking-tight">
               KONSULTASI APOTEKER RAG MASTER
             </h4>
             <p className="text-xs font-semibold text-emerald-700 mt-0.5">

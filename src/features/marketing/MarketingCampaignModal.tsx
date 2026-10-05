@@ -586,7 +586,7 @@ export function MarketingCampaignModal({
                 )}
               </div>
 
-              <h4 className="text-sm font-black text-stone-900 truncate px-2">
+              <h4 className="text-sm font-bold text-stone-900 truncate px-2">
                 {name || "Pratinjau QR Kampanye"}
               </h4>
               <p className="text-[10px] text-stone-500">
