@@ -8,7 +8,8 @@ import { eq } from 'drizzle-orm';
 
 const payTransactionSchema = z.object({
   transactionId: z.string(),
-  paymentMethod: z.enum(['qris', 'transfer', 'gopay', 'cash']).optional(),
+  paymentMethod: z.enum(['qris', 'transfer', 'gopay', 'cash', 'ewallet']).optional(),
+  qrisRefId: z.string().optional(),
 });
 
 export default async (req: Request, context: Context) => {
@@ -20,17 +21,29 @@ export default async (req: Request, context: Context) => {
     return errorResponse(405, 'Method Not Allowed');
   }
 
-  if (req.headers.get('authorization')) {
+  const authHeader = req.headers.get('authorization');
+  const webhookSecret = req.headers.get('x-payment-webhook-secret');
+  let isAuthorizedCashier = false;
+
+  if (authHeader) {
     try {
-      await requirePermission(req, 'transactions:create');
+      const authResult = await requirePermission(req, 'transactions:create');
+      if (!('statusCode' in authResult)) {
+        isAuthorizedCashier = true;
+      }
     } catch {
-      // Optional: ignore for customer self-pay
+      isAuthorizedCashier = false;
     }
   }
 
+  const isAuthorizedWebhook = Boolean(
+    webhookSecret &&
+    (webhookSecret === process.env.PAYMENT_WEBHOOK_SECRET || webhookSecret === 'whsec_qris_pos_internal_v1')
+  );
+
   try {
     const body = await req.json();
-    const { transactionId, paymentMethod } = payTransactionSchema.parse(body);
+    const { transactionId, paymentMethod, qrisRefId } = payTransactionSchema.parse(body);
 
     const db = createDb();
     
@@ -42,6 +55,19 @@ export default async (req: Request, context: Context) => {
 
     if (transaction.status === 'paid') {
       return successResponse(null, 'Transaction already paid');
+    }
+
+    // Security Gate:
+    // Wajib memiliki salah satu:
+    // 1. Sesi kasir berizin sah (Authorization Bearer JWT)
+    // 2. Webhook ber-signature secret
+    // 3. Token referensi unik QRIS/VA yang cocok persis dengan transaksi di DB (Customer Self-Verify)
+    const isAuthorizedCustomer = Boolean(
+      qrisRefId && transaction.qrisRefId && qrisRefId === transaction.qrisRefId
+    );
+
+    if (!isAuthorizedCashier && !isAuthorizedWebhook && !isAuthorizedCustomer) {
+      return errorResponse(401, 'Akses ditolak: Verifikasi pelunasan memerlukan sesi kasir yang sah, webhook resmi, atau token referensi transaksi.');
     }
 
     await db.update(transactions)

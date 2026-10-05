@@ -113,6 +113,7 @@ export function CustomerPaymentModal({
         body: JSON.stringify({
           transactionId,
           paymentMethod: selectedPayment,
+          qrisRefId,
         }),
       })
 

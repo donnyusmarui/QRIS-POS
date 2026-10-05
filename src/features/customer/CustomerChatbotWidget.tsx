@@ -857,6 +857,14 @@ export function CustomerChatbotWidget({
             </div>
           ) : (
             <>
+              {/* Permanent Legal Medical Disclaimer Banner */}
+              <div className="shrink-0 bg-amber-50/95 border-b border-amber-200/80 px-3 py-1.5 text-[10.5px] text-amber-950 flex items-start gap-1.5 backdrop-blur-xs select-none">
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-700 shrink-0 mt-0.5" />
+                <p className="leading-tight">
+                  <span className="font-semibold text-amber-900">Sanggahan Medis:</span> Asisten AI ini menyajikan edukasi & informasi produk, bukan pengganti diagnosis resmi atau resep dokter.
+                </p>
+              </div>
+
               {/* Banner serah-terima ke admin */}
               {handedOff && (
                 <div className="shrink-0 flex items-center justify-between gap-2 bg-amber-50 border-b border-amber-200/70 px-3.5 py-2 text-[11px] text-amber-900">

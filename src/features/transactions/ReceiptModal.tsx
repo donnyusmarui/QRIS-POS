@@ -1,5 +1,7 @@
-import { Printer, CheckCircle, X } from "lucide-react"
+import { useState } from "react"
+import { Printer, CheckCircle, X, Bluetooth, Loader2 } from "lucide-react"
 import type { CartItem } from "@/types"
+import { printReceiptViaBluetooth, isBluetoothSupported } from "@/lib/bluetooth-printer"
 
 interface ReceiptModalProps {
   open: boolean
@@ -22,6 +24,9 @@ export function ReceiptModal({
 }: ReceiptModalProps) {
   if (!open) return null
 
+  const [isPrintingBt, setIsPrintingBt] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+
   const formatRupiah = (n: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n)
 
@@ -31,8 +36,44 @@ export function ReceiptModal({
     timeStyle: "short",
   })
 
-  function handlePrint() {
+  function handleBrowserPrint() {
     window.print()
+  }
+
+  async function handleBluetoothPrint() {
+    setIsPrintingBt(true)
+    setStatusMessage(null)
+    try {
+      const res = await printReceiptViaBluetooth({
+        storeName: "QRIS-POS SHOP",
+        address: "Jl. Jenderal Sudirman No. 123",
+        transactionId,
+        dateStr,
+        items: items.map((i) => ({
+          name: i.productName,
+          qty: i.quantity,
+          price: i.price,
+        })),
+        totalAmount,
+        paymentMethod,
+        cashGiven,
+        change,
+      })
+
+      setStatusMessage(res.message)
+      if (!res.success && !isBluetoothSupported()) {
+        setTimeout(() => {
+          window.print()
+        }, 800)
+      }
+    } catch (err: any) {
+      setStatusMessage(err.message || "Gagal mencetak thermal. Beralih ke browser print...")
+      setTimeout(() => {
+        window.print()
+      }, 1000)
+    } finally {
+      setIsPrintingBt(false)
+    }
   }
 
   return (
@@ -107,20 +148,45 @@ export function ReceiptModal({
           </p>
         </div>
 
+        {/* Status Message */}
+        {statusMessage && (
+          <div className="mt-3 rounded-lg bg-muted/60 p-2 text-center text-xs text-foreground print:hidden">
+            {statusMessage}
+          </div>
+        )}
+
         {/* Actions */}
-        <div className="mt-6 flex gap-2 print:hidden">
-          <button
-            onClick={handlePrint}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground press-tactile hover:bg-primary/90 shadow-sm"
-          >
-            <Printer className="h-4 w-4" />
-            Cetak Struk
-          </button>
+        <div className="mt-5 flex flex-col gap-2 print:hidden">
+          <div className="flex gap-2">
+            <button
+              onClick={handleBluetoothPrint}
+              disabled={isPrintingBt}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 py-2.5 text-xs sm:text-sm font-semibold text-white press-tactile hover:bg-emerald-800 disabled:opacity-50 shadow-sm"
+              title="Cetak langsung ke printer thermal Bluetooth 58mm tanpa dialog browser"
+            >
+              {isPrintingBt ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bluetooth className="h-4 w-4" />
+              )}
+              {isPrintingBt ? "Menghubungkan..." : "Cetak Thermal BT (58mm)"}
+            </button>
+
+            <button
+              onClick={handleBrowserPrint}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-input bg-background px-3 py-2.5 text-xs sm:text-sm font-semibold text-foreground press-tactile hover:bg-muted shadow-xs"
+              title="Cetak lewat dialog printer standar browser"
+            >
+              <Printer className="h-4 w-4" />
+              Browser
+            </button>
+          </div>
+
           <button
             onClick={onClose}
-            className="rounded-xl border border-input px-4 py-2.5 text-sm font-semibold hover:bg-muted press-tactile"
+            className="w-full rounded-xl border border-input py-2 text-xs font-semibold text-muted-foreground hover:bg-muted press-tactile"
           >
-            Tutup
+            Selesai & Tutup
           </button>
         </div>
       </div>

@@ -41,10 +41,35 @@ async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    throw new ApiError(data?.error || "Request failed", res.status)
+    const errorMsg = data?.error || (res.status === 401 ? "Sesi login kasir Anda telah berakhir atau akses memerlukan otorisasi sah." : "Request failed")
+    if (res.status === 401) {
+      triggerUnauthorized(errorMsg)
+    }
+    throw new ApiError(errorMsg, res.status)
   }
 
   return data as ApiResponse<T>
+}
+
+// ─── 401 Unauthorized Interceptor & Event Emitter ──────────
+type UnauthorizedListener = (message?: string) => void
+const unauthorizedListeners = new Set<UnauthorizedListener>()
+
+export function onUnauthorized(callback: UnauthorizedListener) {
+  unauthorizedListeners.add(callback)
+  return () => {
+    unauthorizedListeners.delete(callback)
+  }
+}
+
+let last401Trigger = 0
+export function triggerUnauthorized(message?: string) {
+  const now = Date.now()
+  // Anti-spam guard: abaikan jika ada request gagal 401 beruntun dalam rentang 1.5 detik
+  if (now - last401Trigger < 1500) return
+  last401Trigger = now
+
+  unauthorizedListeners.forEach((fn) => fn(message))
 }
 
 export class ApiError extends Error {

@@ -17,6 +17,7 @@ import { AiSettingsPage } from "@/features/settings/AiSettingsPage"
 import { ChatInboxPage } from "@/features/settings/ChatInboxPage"
 
 import { CustomerPortalPage } from "@/features/customer/CustomerPortalPage"
+import { UnauthorizedModal } from "@/components/common/UnauthorizedModal"
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: ReactNode }) {
@@ -242,6 +243,7 @@ function App() {
     <BrowserRouter>
       <ErrorBoundary>
         <AppRoutes />
+        <UnauthorizedModal />
       </ErrorBoundary>
     </BrowserRouter>
   )
