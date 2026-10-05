@@ -178,12 +178,25 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/settings/store"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <RoleGuard permission="settings:manage">
+                <AiSettingsPage initialTab="store_profile" />
+              </RoleGuard>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/settings/ai"
         element={
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="settings:manage">
-                <AiSettingsPage />
+                <AiSettingsPage initialTab="models" />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>

@@ -46,6 +46,7 @@ const managementItems: NavItem[] = [
   { label: "Data Pelanggan", href: "/customers", icon: <Users className="h-4 w-4" />, permission: "customers:manage" },
   { label: "Laporan & Omzet", href: "/reports", icon: <BarChart3 className="h-4 w-4" />, permission: "reports:view" },
   { label: "Inbox Chat", href: "/settings/chat", icon: <MessageSquare className="h-4 w-4" />, permission: "customers:manage" },
+  { label: "Profil & Niche Toko", href: "/settings/store", icon: <Store className="h-4 w-4" />, permission: "settings:manage" },
   { label: "Konfigurasi AI", href: "/settings/ai", icon: <Bot className="h-4 w-4" />, permission: "settings:manage" },
 ]
 

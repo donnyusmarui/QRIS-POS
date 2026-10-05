@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useLocation } from "react-router"
 import { apiFetch } from "@/lib/api"
 import type { AiProvider } from "@/types"
 import {
@@ -181,8 +182,32 @@ const SAMPLE_AVATARS = [
   },
 ]
 
-export function AiSettingsPage() {
-  const [activeTab, setActiveTab] = useState<"store_profile" | "models" | "welcome" | "symptoms" | "persona" | "rag" | "product_chat">("store_profile")
+export type AiSettingsTab = "store_profile" | "models" | "welcome" | "symptoms" | "persona" | "rag" | "product_chat"
+
+export interface AiSettingsPageProps {
+  initialTab?: AiSettingsTab
+}
+
+export function AiSettingsPage({ initialTab }: AiSettingsPageProps = {}) {
+  const location = useLocation()
+  const defaultTab: AiSettingsTab =
+    initialTab ||
+    (location.pathname === "/settings/store"
+      ? "store_profile"
+      : location.pathname === "/settings/ai"
+      ? "models"
+      : "store_profile")
+  const [activeTab, setActiveTab] = useState<AiSettingsTab>(defaultTab)
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab)
+    } else if (location.pathname === "/settings/store") {
+      setActiveTab("store_profile")
+    } else if (location.pathname === "/settings/ai") {
+      setActiveTab("models")
+    }
+  }, [initialTab, location.pathname])
   const {
     storeName,
     tagline,
