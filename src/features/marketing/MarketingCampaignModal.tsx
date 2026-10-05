@@ -17,6 +17,7 @@ import { useStoreProfileStore } from "@/lib/store-profile"
 export type MarketingChannel =
   | "tiktok"
   | "instagram"
+  | "youtube"
   | "whatsapp"
   | "google"
   | "facebook"
@@ -69,6 +70,13 @@ const CHANNEL_CONFIG: Record<
     color: "#E1306C",
     badgeClass: "bg-linear-to-r from-purple-600 via-pink-600 to-amber-500 text-white",
     mediums: ["story", "reels", "bio_link", "ig_ads", "dm_link"],
+  },
+  youtube: {
+    label: "YouTube",
+    defaultSource: "youtube",
+    color: "#FF0000",
+    badgeClass: "bg-red-600 text-white",
+    mediums: ["video_desc", "community_post", "shorts", "pinned_comment", "yt_card"],
   },
   whatsapp: {
     label: "WhatsApp",
@@ -376,7 +384,7 @@ export function MarketingCampaignModal({
               <label className="block text-xs font-bold text-stone-700 mb-2">
                 1. Pilih Kanal / Media Pemasaran (Channel Attribution)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {(Object.keys(CHANNEL_CONFIG) as MarketingChannel[]).map((ch) => {
                   const item = CHANNEL_CONFIG[ch]
                   const isSelected = channel === ch

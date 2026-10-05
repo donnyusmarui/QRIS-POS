@@ -35,6 +35,7 @@ const CHANNEL_BADGES: Record<MarketingChannel, { label: string; badgeClass: stri
     label: "Instagram",
     badgeClass: "bg-linear-to-r from-purple-600 via-pink-600 to-amber-500 text-white",
   },
+  youtube: { label: "YouTube", badgeClass: "bg-red-600 text-white" },
   whatsapp: { label: "WhatsApp", badgeClass: "bg-emerald-600 text-white" },
   google: { label: "Google", badgeClass: "bg-blue-600 text-white" },
   facebook: { label: "Facebook", badgeClass: "bg-blue-700 text-white" },

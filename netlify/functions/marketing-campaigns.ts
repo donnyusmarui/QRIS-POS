@@ -9,7 +9,7 @@ import crypto from 'crypto';
 
 const campaignSchema = z.object({
   name: z.string().min(2, 'Nama kampanye minimal 2 karakter'),
-  channel: z.enum(['tiktok', 'instagram', 'whatsapp', 'google', 'facebook', 'linkedin', 'offline', 'other']),
+  channel: z.enum(['tiktok', 'instagram', 'youtube', 'whatsapp', 'google', 'facebook', 'linkedin', 'offline', 'other']),
   utmSource: z.string().min(1, 'utm_source wajib diisi'),
   utmMedium: z.string().optional().nullable(),
   utmCampaign: z.string().optional().nullable(),
