@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { useLocation } from "react-router"
 import { apiFetch } from "@/lib/api"
 import type { AiProvider } from "@/types"
 import {
@@ -28,13 +27,6 @@ import {
   Activity,
   Leaf,
   Sliders,
-  Store,
-  Utensils,
-  Pill,
-  Shirt,
-  Wrench,
-  X,
-  RotateCcw,
 } from "lucide-react"
 import {
   DEFAULT_MASTER_PRODUCT_CHAT_CONFIG,
@@ -42,11 +34,6 @@ import {
   type ProductChatOverride,
   parseProductChatConfig,
 } from "@/lib/product-chat-config"
-import {
-  useStoreProfileStore,
-  CATEGORY_PRESETS,
-  type BusinessCategory,
-} from "@/lib/store-profile"
 
 interface SavedModel {
   id: string
@@ -182,43 +169,20 @@ const SAMPLE_AVATARS = [
   },
 ]
 
-export type AiSettingsTab = "store_profile" | "models" | "welcome" | "symptoms" | "persona" | "rag" | "product_chat"
+export type AiSettingsTab = "models" | "welcome" | "symptoms" | "persona" | "rag" | "product_chat"
 
 export interface AiSettingsPageProps {
   initialTab?: AiSettingsTab
 }
 
-export function AiSettingsPage({ initialTab }: AiSettingsPageProps = {}) {
-  const location = useLocation()
-  const defaultTab: AiSettingsTab =
-    initialTab ||
-    (location.pathname === "/settings/store"
-      ? "store_profile"
-      : location.pathname === "/settings/ai"
-      ? "models"
-      : "store_profile")
-  const [activeTab, setActiveTab] = useState<AiSettingsTab>(defaultTab)
+export function AiSettingsPage({ initialTab = "models" }: AiSettingsPageProps = {}) {
+  const [activeTab, setActiveTab] = useState<AiSettingsTab>(initialTab)
 
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab)
-    } else if (location.pathname === "/settings/store") {
-      setActiveTab("store_profile")
-    } else if (location.pathname === "/settings/ai") {
-      setActiveTab("models")
     }
-  }, [initialTab, location.pathname])
-  const {
-    storeName,
-    tagline,
-    businessCategory,
-    terminology,
-    applyCategoryPreset,
-    updateStoreProfile,
-    updateTerminology,
-    resetToDefault,
-  } = useStoreProfileStore()
-  const [profileSuccessMsg, setProfileSuccessMsg] = useState("")
+  }, [initialTab])
 
   // ── STATE: TAB 1 (MODELS) ──
   const [savedModels, setSavedModels] = useState<SavedModel[]>([])
@@ -816,18 +780,6 @@ export function AiSettingsPage({ initialTab }: AiSettingsPageProps = {}) {
         <div className="bg-stone-100 p-1 rounded-2xl flex items-center gap-1 border border-stone-200 overflow-x-auto max-w-full">
           <button
             type="button"
-            onClick={() => setActiveTab("store_profile")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              activeTab === "store_profile"
-                ? "bg-white text-emerald-800 shadow-xs"
-                : "text-stone-600 hover:text-stone-900"
-            }`}
-          >
-            <Store className="h-3.5 w-3.5 text-emerald-700" />
-            Profil Toko &amp; Niche SaaS
-          </button>
-          <button
-            type="button"
             onClick={() => setActiveTab("models")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === "models"
@@ -901,206 +853,7 @@ export function AiSettingsPage({ initialTab }: AiSettingsPageProps = {}) {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* TAB: STORE PROFILE & MULTI-NICHE SAAS ENGINE                   */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {activeTab === "store_profile" && (
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {profileSuccessMsg && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800 font-semibold flex items-center justify-between gap-2 shadow-2xs">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>{profileSuccessMsg}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setProfileSuccessMsg("")}
-                className="text-stone-400 hover:text-stone-600 cursor-pointer"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
 
-          {/* Section 1: Preset Switcher */}
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <Store className="h-4 w-4 text-emerald-700" />
-                  Preset Kategori Industri Bisnis (1-Click Switcher)
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Pilih model bisnis Anda. Seluruh label katalog, tombol transaksi, persona bot AI, dan teks greeting akan langsung beradaptasi secara otomatis.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  resetToDefault()
-                  setProfileSuccessMsg("Pengaturan profil toko berhasil dikembalikan ke standar Retail Umum!")
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-semibold transition cursor-pointer"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>Reset Standar</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
-              {(Object.keys(CATEGORY_PRESETS) as BusinessCategory[]).map((catKey) => {
-                const preset = CATEGORY_PRESETS[catKey]
-                const isSelected = businessCategory === catKey
-                return (
-                  <div
-                    key={catKey}
-                    onClick={() => {
-                      applyCategoryPreset(catKey)
-                      setProfileSuccessMsg(`Preset berhasil diubah ke: ${preset.label}! Seluruh modul antarmuka kini sinkron.`)
-                    }}
-                    className={`press-tactile relative rounded-2xl border p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                      isSelected
-                        ? "border-emerald-600 bg-emerald-50/60 shadow-sm ring-1 ring-emerald-600"
-                        : "border-stone-200 hover:border-stone-300 hover:bg-stone-50/70"
-                    }`}
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                          isSelected ? "bg-emerald-700 text-white shadow-xs" : "bg-stone-100 text-stone-600"
-                        }`}>
-                          {catKey === "fnb" && <Utensils className="h-4 w-4" />}
-                          {catKey === "pharmacy_herbal" && <Pill className="h-4 w-4" />}
-                          {catKey === "fashion" && <Shirt className="h-4 w-4" />}
-                          {catKey === "services" && <Wrench className="h-4 w-4" />}
-                          {catKey === "custom" && <Sliders className="h-4 w-4" />}
-                          {catKey === "retail" && <Store className="h-4 w-4" />}
-                        </span>
-                        {isSelected && (
-                          <span className="rounded-full bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 flex items-center gap-1 shadow-2xs">
-                            <Check className="h-3 w-3 stroke-[3]" /> Aktif
-                          </span>
-                        )}
-                      </div>
-                      <h4 className="text-xs font-bold text-stone-900">{preset.label}</h4>
-                      <p className="text-[11px] text-stone-500 leading-relaxed">{preset.description}</p>
-                    </div>
-
-                    <div className="mt-3 pt-3 border-t border-stone-100/80 flex items-center justify-between text-[10px] text-stone-400">
-                      <span className="font-medium">Tombol: {preset.terminology.buyButtonText}</span>
-                      <span className="font-semibold text-emerald-700">Terapkan</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Section 2: Store Information & Terminology Customizer */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Card: Store Profile */}
-            <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="border-b border-stone-100 pb-3">
-                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <User className="h-4 w-4 text-emerald-700" />
-                  Identitas Usaha &amp; Merchant
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Informasi ini muncul di portal pelanggan, struk pembayaran, dan standee QR kasir.
-                </p>
-              </div>
-
-              <div className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block text-stone-700 font-semibold mb-1">Nama Toko / Bisnis *</label>
-                  <input
-                    type="text"
-                    value={storeName}
-                    onChange={(e) => updateStoreProfile({ storeName: e.target.value })}
-                    placeholder="Contoh: Toko Berkah Retail"
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-stone-700 font-semibold mb-1">Slogan / Tagline Usaha</label>
-                  <input
-                    type="text"
-                    value={tagline}
-                    onChange={(e) => updateStoreProfile({ tagline: e.target.value })}
-                    placeholder="Contoh: Belanja Cepat, Hemat & Terpercaya"
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div className="p-3 bg-stone-50 rounded-xl border border-stone-200/80 text-[11px] text-stone-600 space-y-1">
-                  <p className="font-bold text-stone-800">Status White-Label:</p>
-                  <p>Kategori aktif: <span className="font-bold text-emerald-700">{CATEGORY_PRESETS[businessCategory]?.label || businessCategory}</span>. Pengaturan disimpan otomatis secara lokal di perangkat kasir ini.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Card: Terminology Dictionary */}
-            <div className="bg-white rounded-3xl border border-stone-200 p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="border-b border-stone-100 pb-3">
-                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <Sliders className="h-4 w-4 text-emerald-700" />
-                  Kamus Istilah UI &amp; Tombol Transaksi
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Kustomisasi kata spesifik yang tampil pada tombol antarmuka pelanggan.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-                <div>
-                  <label className="block text-stone-700 font-semibold mb-1">Judul Katalog</label>
-                  <input
-                    type="text"
-                    value={terminology.catalogHeading}
-                    onChange={(e) => updateTerminology({ catalogHeading: e.target.value })}
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-stone-700 font-semibold mb-1">Teks Tombol Beli / CTA</label>
-                  <input
-                    type="text"
-                    value={terminology.buyButtonText}
-                    onChange={(e) => updateTerminology({ buyButtonText: e.target.value })}
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-stone-700 font-semibold mb-1">Nama Persona Asisten AI</label>
-                  <input
-                    type="text"
-                    value={terminology.aiPersonaTitle}
-                    onChange={(e) => updateTerminology({ aiPersonaTitle: e.target.value })}
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-stone-700 font-semibold mb-1">Tombol Chatbot AI</label>
-                  <input
-                    type="text"
-                    value={terminology.aiButtonText}
-                    onChange={(e) => updateTerminology({ aiButtonText: e.target.value })}
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-stone-700 font-semibold mb-1">Placeholder Kotak Pencarian</label>
-                  <input
-                    type="text"
-                    value={terminology.searchPlaceholder}
-                    onChange={(e) => updateTerminology({ searchPlaceholder: e.target.value })}
-                    className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:border-emerald-600 focus:outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* TAB 3: CHECKLIST GEJALA (MODUL 2)                              */}

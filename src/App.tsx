@@ -14,6 +14,7 @@ import { InventoryPage } from "@/features/inventory/InventoryPage"
 import { CustomersPage } from "@/features/customers/CustomersPage"
 import { ReportsPage } from "@/features/reports/ReportsPage"
 import { AiSettingsPage } from "@/features/settings/AiSettingsPage"
+import { StoreProfilePage } from "@/features/settings/StoreProfilePage"
 import { ChatInboxPage } from "@/features/settings/ChatInboxPage"
 import { MarketingAnalyticsPage } from "@/features/marketing/MarketingAnalyticsPage"
 
@@ -183,7 +184,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="settings:manage">
-                <AiSettingsPage initialTab="store_profile" />
+                <StoreProfilePage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
@@ -196,7 +197,7 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <RoleGuard permission="settings:manage">
-                <AiSettingsPage initialTab="models" />
+                <AiSettingsPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>
