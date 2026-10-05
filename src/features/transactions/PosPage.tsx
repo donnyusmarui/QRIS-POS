@@ -35,6 +35,7 @@ export function PosPage() {
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null)
   const [activeQrisRef, setActiveQrisRef] = useState<string | null>(null)
+  const [activeQrString, setActiveQrString] = useState<string | null>(null)
   const [completedItems, setCompletedItems] = useState<any[]>([])
   const [completedTotal, setCompletedTotal] = useState(0)
 
@@ -94,6 +95,7 @@ export function PosPage() {
   const total = totalAmount()
 
   async function handleCheckout() {
+    if (isCheckingOut) return
     if (items.length === 0) return
     if (paymentMethod === "cash" && cashGiven < total) {
       alert("Jumlah uang tunai kurang dari total pembayaran!")
@@ -118,6 +120,8 @@ export function PosPage() {
         status: string
         totalAmount: number
         qrisRefId: string | null
+        qrString?: string | null
+        vaNumber?: string | null
         paymentMethod: string
       }>("transactions-create", {
         method: "POST",
@@ -127,6 +131,7 @@ export function PosPage() {
       if (res.data) {
         setActiveTransactionId(res.data.transactionId)
         setActiveQrisRef(res.data.qrisRefId)
+        setActiveQrString(res.data.qrString || null)
         setCompletedItems([...items])
         setCompletedTotal(total)
 
@@ -494,6 +499,7 @@ export function PosPage() {
         open={qrisOpen}
         totalAmount={completedTotal}
         qrisRefId={activeQrisRef}
+        qrString={activeQrString}
         transactionId={activeTransactionId}
         onSuccess={handleQrisSuccess}
         onClose={() => setQrisOpen(false)}

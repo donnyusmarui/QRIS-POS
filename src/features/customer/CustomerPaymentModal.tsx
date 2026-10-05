@@ -19,6 +19,8 @@ interface CustomerPaymentModalProps {
   open: boolean
   transactionId: string | null
   qrisRefId: string | null
+  qrString?: string | null
+  vaNumber?: string | null
   totalAmount: number
   onPaymentSuccess: () => void
   onClose: () => void
@@ -29,6 +31,8 @@ export function CustomerPaymentModal({
   open,
   transactionId,
   qrisRefId,
+  qrString,
+  vaNumber,
   totalAmount,
   onPaymentSuccess,
   onClose,
@@ -70,14 +74,16 @@ export function CustomerPaymentModal({
   useEffect(() => {
     if (open && (selectedPayment === "qris" || selectedPayment === "gopay")) {
       const codeRef = qrisRefId || `QRIS-${Date.now()}`
-      const payload = `00020101021226610016ID.CO.QRIS.WWW01189360091800000000000215${codeRef}520458125303360540${totalAmount}5802ID5913QRIS-POS SHOP6007JAKARTA6304`
+      const payload =
+        qrString ||
+        `00020101021226610016ID.CO.QRIS.WWW01189360091800000000000215${codeRef}520458125303360540${totalAmount}5802ID5913QRIS-POS SHOP6007JAKARTA6304`
       QRCode.toDataURL(payload, { width: 280, margin: 2 }, (err, url) => {
         if (!err && url) {
           setQrCodeDataUrl(url)
         }
       })
     }
-  }, [open, selectedPayment, qrisRefId, totalAmount])
+  }, [open, selectedPayment, qrisRefId, totalAmount, qrString])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -87,14 +93,17 @@ export function CustomerPaymentModal({
 
   // Virtual Account number mapping per bank
   const getVaNumber = (bank: string) => {
+    if (vaNumber) {
+      return vaNumber.replace(/(\d{4})(?=\d)/g, "$1 ")
+    }
     const prefix = bank === "BCA" ? "8801" : bank === "Mandiri" ? "8902" : bank === "BRI" ? "8873" : "8814"
     const suffix = transactionId ? transactionId.replace(/-/g, "").slice(0, 10).toUpperCase() : "9283741829"
     return `${prefix} ${suffix.slice(0, 4)} ${suffix.slice(4, 8)}`
   }
 
   function handleCopyVa() {
-    const va = getVaNumber(selectedBank).replace(/\s/g, "")
-    navigator.clipboard.writeText(va)
+    const rawVa = vaNumber ? vaNumber.replace(/\s/g, "") : getVaNumber(selectedBank).replace(/\s/g, "")
+    navigator.clipboard.writeText(rawVa)
     setCopiedVa(true)
     setTimeout(() => setCopiedVa(false), 2000)
   }

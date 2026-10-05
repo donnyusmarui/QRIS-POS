@@ -1,10 +1,11 @@
 import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { transactions } from '../../db/schema';
+import { transactions, transactionItems, products, inventoryLog } from '../../db/schema';
 import { corsHeaders, successResponse, errorResponse } from './_shared/response';
 import { requirePermission } from './_shared/rbac';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
+import crypto from 'crypto';
 
 const payTransactionSchema = z.object({
   transactionId: z.string(),
@@ -76,6 +77,28 @@ export default async (req: Request, context: Context) => {
         ...(paymentMethod ? { paymentMethod } : {}),
       })
       .where(eq(transactions.id, transactionId));
+
+    // Deduct stock for items if transaction was previously pending
+    const items = await db.select().from(transactionItems).where(eq(transactionItems.transactionId, transactionId));
+    for (const item of items) {
+      const [prod] = await db.select().from(products).where(eq(products.id, item.productId));
+      if (prod) {
+        await db.update(products)
+          .set({
+            stock: Math.max(0, prod.stock - item.quantity),
+            updatedAt: new Date().toISOString(),
+          })
+          .where(eq(products.id, item.productId));
+
+        await db.insert(inventoryLog).values({
+          id: crypto.randomUUID(),
+          productId: item.productId,
+          changeQty: -item.quantity,
+          reason: `Settlement #${transactionId.slice(0, 8)}`,
+          createdBy: transaction.userId,
+        });
+      }
+    }
 
     return successResponse(null, 'Transaction paid successfully');
 

@@ -405,6 +405,8 @@ export function CustomerPortalPage() {
   // Current active transaction state
   const [activeTransactionId, setActiveTransactionId] = useState<string | null>(null)
   const [activeQrisRefId, setActiveQrisRefId] = useState<string | null>(null)
+  const [activeQrString, setActiveQrString] = useState<string | null>(null)
+  const [activeVaNumber, setActiveVaNumber] = useState<string | null>(null)
   const [completedOrderItems, setCompletedOrderItems] = useState<any[]>([])
   const [completedTotalAmount, setCompletedTotalAmount] = useState(0)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -416,6 +418,7 @@ export function CustomerPortalPage() {
     getSubtotal,
     customerInfo,
     selectedPayment,
+    selectedBank,
     clearCart,
   } = useCustomerCartStore()
 
@@ -538,6 +541,8 @@ export function CustomerPortalPage() {
         body: JSON.stringify({
           customerId: undefined,
           paymentMethod: selectedPayment,
+          bank: selectedBank.toLowerCase(),
+          customerName: customerInfo.name || undefined,
           notes: `${customerInfo.orderType === "dine_in" ? `[Ambil di Apotek / Meja ${customerInfo.tableNumber || "-"}]` : "[Bawa Pulang / Kirim]"} Pemesan: ${customerInfo.name} (${customerInfo.phone || "No WA"})`,
           items: cart.map((item) => ({
             productId: item.product.id,
@@ -553,6 +558,8 @@ export function CustomerPortalPage() {
       if (json.success && json.data) {
         setActiveTransactionId(json.data.transactionId)
         setActiveQrisRefId(json.data.qrisRefId)
+        setActiveQrString(json.data.qrString || null)
+        setActiveVaNumber(json.data.vaNumber || null)
         setCompletedOrderItems([...cart])
         setCompletedTotalAmount(getSubtotal())
 
@@ -868,12 +875,16 @@ export function CustomerPortalPage() {
         open={isPaymentOpen}
         transactionId={activeTransactionId}
         qrisRefId={activeQrisRefId}
+        qrString={activeQrString}
+        vaNumber={activeVaNumber}
         totalAmount={completedTotalAmount}
         onPaymentSuccess={handlePaymentSuccess}
         onClose={() => setIsPaymentOpen(false)}
         onCancelOrder={() => {
           setActiveTransactionId(null)
           setActiveQrisRefId(null)
+          setActiveQrString(null)
+          setActiveVaNumber(null)
           setCompletedOrderItems([])
           setIsPaymentOpen(false)
         }}

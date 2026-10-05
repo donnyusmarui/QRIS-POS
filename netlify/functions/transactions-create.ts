@@ -3,6 +3,7 @@ import { createDb } from '../../db/index';
 import { transactions, transactionItems, products, inventoryLog } from '../../db/schema';
 import { corsHeaders, successResponse, errorResponse } from './_shared/response';
 import { requirePermission } from './_shared/rbac';
+import { chargeMidtransQris, chargeMidtransBankTransfer } from './_shared/midtrans';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -10,6 +11,9 @@ import crypto from 'crypto';
 const createTransactionSchema = z.object({
   customerId: z.string().optional(),
   paymentMethod: z.enum(['cash', 'qris', 'transfer', 'gopay', 'ewallet']),
+  bank: z.string().optional(),
+  customerName: z.string().optional(),
+  customerEmail: z.string().optional(),
   items: z.array(z.object({
     productId: z.string(),
     productName: z.string(),
@@ -47,9 +51,36 @@ export default async (req: Request, context: Context) => {
     const totalAmount = validatedData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const isPending = ['qris', 'transfer', 'gopay', 'ewallet'].includes(validatedData.paymentMethod);
     const status = isPending ? 'pending' : 'paid';
-    const qrisRefId = ['qris', 'gopay', 'ewallet'].includes(validatedData.paymentMethod)
-      ? `QRIS-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
-      : (validatedData.paymentMethod === 'transfer' ? `VA-${Date.now().toString().slice(-8)}` : null);
+
+    let qrisRefId: string | null = null;
+    let qrString: string | null = null;
+    let vaNumber: string | null = null;
+
+    // Integrasi Midtrans Core API resmi
+    if (['qris', 'gopay', 'ewallet'].includes(validatedData.paymentMethod)) {
+      const qrisResult = await chargeMidtransQris({
+        orderId: transactionId,
+        grossAmount: totalAmount,
+        customerDetails: {
+          firstName: validatedData.customerName || (user.fullName ? user.fullName.split(' ')[0] : 'Pelanggan'),
+          email: validatedData.customerEmail || user.email || 'customer@qrispos.id',
+        },
+      });
+      qrString = qrisResult.qrString;
+      qrisRefId = qrisResult.qrString ? transactionId : `QRIS-${Date.now()}`;
+    } else if (validatedData.paymentMethod === 'transfer') {
+      const vaResult = await chargeMidtransBankTransfer({
+        orderId: transactionId,
+        grossAmount: totalAmount,
+        bank: validatedData.bank || 'bca',
+        customerDetails: {
+          firstName: validatedData.customerName || 'Pelanggan',
+          email: validatedData.customerEmail || 'customer@qrispos.id',
+        },
+      });
+      vaNumber = vaResult.vaNumber;
+      qrisRefId = vaResult.vaNumber;
+    }
 
     // Save transaction
     await db.insert(transactions).values({
@@ -59,8 +90,8 @@ export default async (req: Request, context: Context) => {
       totalAmount,
       paymentMethod: validatedData.paymentMethod,
       status,
-      qrisRefId,
-      notes: validatedData.notes || null,
+      qrisRefId: qrisRefId || (isPending ? `REF-${Date.now()}` : null),
+      notes: validatedData.notes || (qrString ? `qr_string:${qrString}` : null),
     });
 
     for (const item of validatedData.items) {
@@ -75,20 +106,24 @@ export default async (req: Request, context: Context) => {
         subtotal: item.price * item.quantity
       });
 
-      // Fetch current product to update stock
-      const [product] = await db.select().from(products).where(eq(products.id, item.productId));
-      if (product) {
-        await db.update(products)
-          .set({ stock: product.stock - item.quantity, updatedAt: new Date().toISOString() })
-          .where(eq(products.id, item.productId));
+      // PERBAIKAN LOGIKA STOK:
+      // Hanya potong stok sekarang jika transaksi sudah lunas (misal: pembayaran tunai).
+      // Transaksi QRIS/Transfer pending akan dipotong otomatis setelah lunas via Midtrans Webhook.
+      if (status === 'paid') {
+        const [product] = await db.select().from(products).where(eq(products.id, item.productId));
+        if (product) {
+          await db.update(products)
+            .set({ stock: Math.max(0, product.stock - item.quantity), updatedAt: new Date().toISOString() })
+            .where(eq(products.id, item.productId));
 
-        await db.insert(inventoryLog).values({
-          id: crypto.randomUUID(),
-          productId: item.productId,
-          changeQty: -item.quantity,
-          reason: `Sale #${transactionId.slice(0, 8)}`,
-          createdBy: user.id
-        });
+          await db.insert(inventoryLog).values({
+            id: crypto.randomUUID(),
+            productId: item.productId,
+            changeQty: -item.quantity,
+            reason: `Sale #${transactionId.slice(0, 8)}`,
+            createdBy: user.id
+          });
+        }
       }
     }
 
@@ -96,7 +131,9 @@ export default async (req: Request, context: Context) => {
       transactionId,
       status,
       totalAmount,
-      qrisRefId,
+      qrisRefId: qrisRefId || transactionId,
+      qrString,
+      vaNumber,
       paymentMethod: validatedData.paymentMethod,
     });
 
