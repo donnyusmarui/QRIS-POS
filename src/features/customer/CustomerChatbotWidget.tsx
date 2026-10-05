@@ -224,6 +224,13 @@ export interface CustomerChatbotWidgetProps {
   productToConsult?: Product | null
   customPromptOverride?: string
   onClearConsultProduct?: () => void
+  campaignContext?: {
+    channel?: string
+    campaignName?: string
+    customGreeting?: string
+    promoCode?: string
+  } | null
+  onFirstEngagement?: () => void
 }
 
 export function CustomerChatbotWidget({
@@ -232,6 +239,8 @@ export function CustomerChatbotWidget({
   productToConsult = null,
   customPromptOverride,
   onClearConsultProduct,
+  campaignContext,
+  onFirstEngagement,
 }: CustomerChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
@@ -277,11 +286,14 @@ export function CustomerChatbotWidget({
 
   // Format dynamic welcome text
   const getWelcomeContent = useCallback(() => {
+    if (campaignContext?.customGreeting) {
+      return campaignContext.customGreeting
+    }
     if (customerLead?.name) {
       return serverWelcome.replace(/\{\{name\}\}/gi, customerLead.name)
     }
     return serverWelcome.replace(/Kak\s*\{\{name\}\},?\s*/gi, "").replace(/\{\{name\}\}/gi, "")
-  }, [customerLead, serverWelcome])
+  }, [customerLead, serverWelcome, campaignContext])
 
   const welcomeMessage = useCallback((): ChatMessage => ({
     id: `welcome-${Date.now()}`,
@@ -548,6 +560,10 @@ export function CustomerChatbotWidget({
       { id: `user-${Date.now()}`, sender: "user", text: message, timestamp: clock() },
     ])
     setInputMessage("")
+
+    if (onFirstEngagement) {
+      onFirstEngagement()
+    }
 
     const handedOff = status === "waiting_admin" || status === "admin"
     if (!handedOff) setIsTyping(true)

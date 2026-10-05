@@ -422,6 +422,99 @@ export function CustomerPortalPage() {
     clearCart,
   } = useCustomerCartStore()
 
+  // Active Marketing Campaign state & attribution
+  const [activeCampaign, setActiveCampaign] = useState<{
+    id?: string
+    name?: string
+    channel?: string
+    bannerMessage?: string
+    customGreeting?: string
+    promoCode?: string
+    utmCampaign?: string
+    utmSource?: string
+  } | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("active_marketing_campaign")
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false)
+
+  // Marketing UTM Scan Attribution Listener
+  useEffect(() => {
+    const utmSource = searchParams.get("utm_source")
+    const utmCampaign = searchParams.get("utm_campaign")
+    const utmMedium = searchParams.get("utm_medium")
+    const promoCode = searchParams.get("promo_code")
+    const campId = searchParams.get("camp_id")
+
+    if (utmSource || utmCampaign || campId) {
+      fetch("/.netlify/functions/marketing-track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventType: "scan",
+          campaignId: campId || undefined,
+          utmSource: utmSource || undefined,
+          utmCampaign: utmCampaign || undefined,
+          utmMedium: utmMedium || undefined,
+          metadata: {
+            referrer: document.referrer || "direct",
+            userAgent: navigator.userAgent,
+          },
+        }),
+      })
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data?.campaign) {
+            const camp = {
+              ...res.data.campaign,
+              utmCampaign: utmCampaign || res.data.campaign.utmCampaign,
+              utmSource: utmSource || res.data.campaign.utmSource,
+              promoCode: promoCode || res.data.campaign.promoCode,
+            }
+            setActiveCampaign(camp)
+            sessionStorage.setItem("active_marketing_campaign", JSON.stringify(camp))
+          } else if (utmSource || utmCampaign) {
+            const fallbackCamp = {
+              channel: utmSource || "marketing",
+              utmSource: utmSource || "direct",
+              utmCampaign: utmCampaign || undefined,
+              promoCode: promoCode || undefined,
+              bannerMessage: `Halo Pengunjung dari ${utmSource ? utmSource.toUpperCase() : "Media Digital"}! Selamat datang di Apotek Herbal Nusantara.`,
+              customGreeting: `Halo! Senang Anda berkunjung melalui promosi ${utmSource || "kami"}. Ada keluhan kesehatan herbal yang ingin dikonsultasikan?`,
+            }
+            setActiveCampaign(fallbackCamp)
+            sessionStorage.setItem("active_marketing_campaign", JSON.stringify(fallbackCamp))
+          }
+        })
+        .catch(() => {})
+    }
+  }, [searchParams])
+
+  const handleAddToCartWithTrack = useCallback(
+    (product: Product) => {
+      const res = addToCart(product)
+      if (activeCampaign) {
+        fetch("/.netlify/functions/marketing-track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventType: "add_to_cart",
+            campaignId: activeCampaign.id,
+            utmCampaign: activeCampaign.utmCampaign,
+            utmSource: activeCampaign.utmSource,
+            productId: product.id,
+          }),
+        }).catch(() => {})
+      }
+      return res
+    },
+    [addToCart, activeCampaign]
+  )
+
   // State & fetch for active products
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -543,6 +636,9 @@ export function CustomerPortalPage() {
           paymentMethod: selectedPayment,
           bank: selectedBank.toLowerCase(),
           customerName: customerInfo.name || undefined,
+          campaignId: activeCampaign?.id || undefined,
+          utmCampaign: activeCampaign?.utmCampaign || undefined,
+          utmSource: activeCampaign?.utmSource || undefined,
           notes: `${customerInfo.orderType === "dine_in" ? `[Ambil di Apotek / Meja ${customerInfo.tableNumber || "-"}]` : "[Bawa Pulang / Kirim]"} Pemesan: ${customerInfo.name} (${customerInfo.phone || "No WA"})`,
           items: cart.map((item) => ({
             productId: item.product.id,
@@ -552,6 +648,20 @@ export function CustomerPortalPage() {
           })),
         }),
       })
+
+      // Fire marketing tracking for checkout event
+      if (activeCampaign) {
+        fetch("/.netlify/functions/marketing-track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventType: "checkout",
+            campaignId: activeCampaign.id,
+            utmCampaign: activeCampaign.utmCampaign,
+            utmSource: activeCampaign.utmSource,
+          }),
+        }).catch(() => {})
+      }
 
       const json = await res.json()
 
@@ -588,6 +698,43 @@ export function CustomerPortalPage() {
     <div className="min-h-screen bg-[#FBF9F5] text-[#181512] flex flex-col justify-between selection:bg-[#FF5A2B]/20 selection:text-[#FF5A2B]">
       {/* ── TOP HERO WASH ── */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-emerald-100/35 via-stone-50/50 to-transparent" />
+
+      {/* ── SMART GREETING & MARKETING ATTRIBUTION BANNER ── */}
+      {activeCampaign && !isBannerDismissed && (
+        <div className="relative z-40 bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white px-4 py-2.5 shadow-sm text-xs border-b border-emerald-900/40 animate-in slide-in-from-top duration-300">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white/20 text-white font-extrabold text-[10px] uppercase">
+                {activeCampaign.channel ? activeCampaign.channel.slice(0, 2) : "QR"}
+              </span>
+              <p className="font-medium text-emerald-50 truncate sm:whitespace-normal">
+                {activeCampaign.bannerMessage ||
+                  `Halo Pengunjung dari ${activeCampaign.channel?.toUpperCase() || "Iklan"}! Selamat datang di Apotek Herbal Nusantara.`}
+              </p>
+              {activeCampaign.promoCode && (
+                <span className="hidden sm:inline-flex items-center gap-1 bg-amber-400 text-stone-950 font-mono font-black text-[11px] px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                  🎟️ KODE VOUCHER: {activeCampaign.promoCode}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {activeCampaign.promoCode && (
+                <span className="sm:hidden inline-flex items-center bg-amber-400 text-stone-950 font-mono font-black text-[10px] px-1.5 py-0.5 rounded">
+                  {activeCampaign.promoCode}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsBannerDismissed(true)}
+                className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-white/20 text-white/80 hover:text-white transition cursor-pointer"
+                aria-label="Tutup Banner"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HEADER (Apotek Herbal Navigation) ── */}
       <header className="sticky top-0 z-30 bg-[#FBF9F5]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 transition-all">
@@ -797,7 +944,7 @@ export function CustomerPortalPage() {
                   key={product.id}
                   product={product}
                   inCartItem={inCartItem}
-                  onAddToCart={addToCart}
+                  onAddToCart={handleAddToCartWithTrack}
                   onViewDetail={(p) => setSelectedProductDetail(p)}
                   onConsultProduct={handleConsultProduct}
                   formatRupiah={formatRupiah}
@@ -858,7 +1005,7 @@ export function CustomerPortalPage() {
         product={selectedProductDetail}
         inCartItem={selectedProductDetail ? cart.find((i) => i.product.id === selectedProductDetail.id) : undefined}
         onClose={() => setSelectedProductDetail(null)}
-        onAddToCart={addToCart}
+        onAddToCart={handleAddToCartWithTrack}
         onConsultProduct={handleConsultProduct}
         formatRupiah={formatRupiah}
         masterConfig={masterChatConfig}
@@ -911,6 +1058,30 @@ export function CustomerPortalPage() {
         productToConsult={productToConsult}
         customPromptOverride={customPromptOverride}
         onClearConsultProduct={handleClearConsultProduct}
+        campaignContext={
+          activeCampaign
+            ? {
+                channel: activeCampaign.channel,
+                campaignName: activeCampaign.name,
+                customGreeting: activeCampaign.customGreeting,
+                promoCode: activeCampaign.promoCode,
+              }
+            : null
+        }
+        onFirstEngagement={() => {
+          if (activeCampaign) {
+            fetch("/.netlify/functions/marketing-track", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                eventType: "chat_engagement",
+                campaignId: activeCampaign.id,
+                utmCampaign: activeCampaign.utmCampaign,
+                utmSource: activeCampaign.utmSource,
+              }),
+            }).catch(() => {})
+          }
+        }}
       />
     </div>
   )

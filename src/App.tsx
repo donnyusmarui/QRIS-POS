@@ -15,6 +15,7 @@ import { CustomersPage } from "@/features/customers/CustomersPage"
 import { ReportsPage } from "@/features/reports/ReportsPage"
 import { AiSettingsPage } from "@/features/settings/AiSettingsPage"
 import { ChatInboxPage } from "@/features/settings/ChatInboxPage"
+import { MarketingAnalyticsPage } from "@/features/marketing/MarketingAnalyticsPage"
 
 import { CustomerPortalPage } from "@/features/customer/CustomerPortalPage"
 import { UnauthorizedModal } from "@/components/common/UnauthorizedModal"
@@ -96,6 +97,19 @@ function AppRoutes() {
             <AppLayout>
               <RoleGuard permission="products:read">
                 <ProductsPage />
+              </RoleGuard>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/marketing"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <RoleGuard permission="products:read">
+                <MarketingAnalyticsPage />
               </RoleGuard>
             </AppLayout>
           </ProtectedRoute>

@@ -42,6 +42,7 @@ const operationalItems: NavItem[] = [
 const managementItems: NavItem[] = [
   { label: "Katalog Produk", href: "/products", icon: <Package className="h-4 w-4" />, permission: "products:read" },
   { label: "Manajemen Stok", href: "/inventory", icon: <Warehouse className="h-4 w-4" />, permission: "inventory:manage" },
+  { label: "Tracking & QR Iklan", href: "/marketing", icon: <QrCode className="h-4 w-4" />, permission: "products:read" },
   { label: "Data Pelanggan", href: "/customers", icon: <Users className="h-4 w-4" />, permission: "customers:manage" },
   { label: "Laporan & Omzet", href: "/reports", icon: <BarChart3 className="h-4 w-4" />, permission: "reports:view" },
   { label: "Inbox Chat", href: "/settings/chat", icon: <MessageSquare className="h-4 w-4" />, permission: "customers:manage" },

@@ -1,11 +1,11 @@
 import { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { transactions, transactionItems, products, inventoryLog } from '../../db/schema';
+import { transactions, transactionItems, products, inventoryLog, marketingCampaigns, marketingTrackingLogs } from '../../db/schema';
 import { corsHeaders, successResponse, errorResponse } from './_shared/response';
 import { requirePermission } from './_shared/rbac';
 import { chargeMidtransQris, chargeMidtransBankTransfer } from './_shared/midtrans';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
 const createTransactionSchema = z.object({
@@ -14,6 +14,9 @@ const createTransactionSchema = z.object({
   bank: z.string().optional(),
   customerName: z.string().optional(),
   customerEmail: z.string().optional(),
+  campaignId: z.string().optional().nullable(),
+  utmCampaign: z.string().optional().nullable(),
+  utmSource: z.string().optional().nullable(),
   items: z.array(z.object({
     productId: z.string(),
     productName: z.string(),
@@ -82,6 +85,17 @@ export default async (req: Request, context: Context) => {
       qrisRefId = vaResult.vaNumber;
     }
 
+    let finalNotes = validatedData.notes || '';
+    if (qrString) {
+      finalNotes = finalNotes ? `${finalNotes} | qr_string:${qrString}` : `qr_string:${qrString}`;
+    }
+    if (validatedData.campaignId) {
+      finalNotes = finalNotes ? `${finalNotes} | camp_id:${validatedData.campaignId}` : `camp_id:${validatedData.campaignId}`;
+    }
+    if (validatedData.utmCampaign) {
+      finalNotes = finalNotes ? `${finalNotes} | utm_camp:${validatedData.utmCampaign}` : `utm_camp:${validatedData.utmCampaign}`;
+    }
+
     // Save transaction
     await db.insert(transactions).values({
       id: transactionId,
@@ -91,7 +105,7 @@ export default async (req: Request, context: Context) => {
       paymentMethod: validatedData.paymentMethod,
       status,
       qrisRefId: qrisRefId || (isPending ? `REF-${Date.now()}` : null),
-      notes: validatedData.notes || (qrString ? `qr_string:${qrString}` : null),
+      notes: finalNotes || null,
     });
 
     for (const item of validatedData.items) {
@@ -124,6 +138,44 @@ export default async (req: Request, context: Context) => {
             createdBy: user.id
           });
         }
+      }
+    }
+
+    // Atribusi pendapatan kampanye pemasaran jika transaksi langsung lunas (Cash)
+    if (status === 'paid' && (validatedData.campaignId || validatedData.utmCampaign)) {
+      try {
+        let matchedCampId = validatedData.campaignId;
+        if (!matchedCampId && validatedData.utmCampaign) {
+          const [found] = await db
+            .select()
+            .from(marketingCampaigns)
+            .where(eq(marketingCampaigns.utmCampaign, validatedData.utmCampaign));
+          if (found) matchedCampId = found.id;
+        }
+
+        if (matchedCampId) {
+          const nowStr = new Date().toISOString();
+          await db
+            .update(marketingCampaigns)
+            .set({
+              revenueAttributed: sql`${marketingCampaigns.revenueAttributed} + ${totalAmount}`,
+              checkoutCount: sql`${marketingCampaigns.checkoutCount} + 1`,
+              updatedAt: nowStr,
+            })
+            .where(eq(marketingCampaigns.id, matchedCampId));
+
+          await db.insert(marketingTrackingLogs).values({
+            id: 'trk_' + crypto.randomUUID().replace(/-/g, '').slice(0, 12),
+            campaignId: matchedCampId,
+            utmSource: validatedData.utmSource || 'direct',
+            utmCampaign: validatedData.utmCampaign || null,
+            eventType: 'paid',
+            metadata: JSON.stringify({ transactionId, totalAmount, paymentMethod: validatedData.paymentMethod }),
+            createdAt: nowStr,
+          });
+        }
+      } catch (attrErr) {
+        console.warn('[Marketing Attribution Warning]:', attrErr);
       }
     }
 

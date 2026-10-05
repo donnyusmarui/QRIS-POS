@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from "react"
+import { Link } from "react-router"
 import { useAuthStore } from "@/stores/auth-store"
 import { apiFetch, hasPermission } from "@/lib/api"
 import type { Product, ProductFormData, PaginatedResponse } from "@/types"
-import { Plus, Search, Pencil, Trash2, QrCode, FileSpreadsheet, Printer } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, QrCode, FileSpreadsheet, Printer, Bot, BarChart3 } from "lucide-react"
 import { ProductFormDialog } from "./ProductFormDialog"
 import { ProductQrModal } from "./ProductQrModal"
 import { ProductBatchQrModal } from "./ProductBatchQrModal"
 import { ProductBatchUploadModal } from "./ProductBatchUploadModal"
+import { MasterChatbotQrModal } from "@/features/marketing/MasterChatbotQrModal"
 
 export function ProductsPage() {
   const user = useAuthStore((s) => s.user)
@@ -20,6 +22,7 @@ export function ProductsPage() {
   const [selectedQrProduct, setSelectedQrProduct] = useState<Product | null>(null)
   const [isBatchQrOpen, setIsBatchQrOpen] = useState(false)
   const [isBatchUploadOpen, setIsBatchUploadOpen] = useState(false)
+  const [isMasterQrOpen, setIsMasterQrOpen] = useState(false)
 
   const canWrite = hasPermission(user, "products:write")
   const canDelete = hasPermission(user, "products:delete")
@@ -94,6 +97,27 @@ export function ProductsPage() {
           <p className="text-xs text-stone-500">Kelola master data herbal, cetak label QR, dan unggah batch.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Level 1 QR: QR Meja Kasir / Chatbot Master */}
+          <button
+            type="button"
+            onClick={() => setIsMasterQrOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 px-3.5 py-2 text-xs font-bold text-stone-700 shadow-2xs transition active:scale-95 cursor-pointer"
+            title="Generate QR Meja Kasir / Chatbot Master untuk display akrilik"
+          >
+            <Bot className="h-4 w-4 text-emerald-700" />
+            <span>QR Meja Kasir</span>
+          </button>
+
+          {/* Link to MarTech Suite */}
+          <Link
+            to="/marketing"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 px-3.5 py-2 text-xs font-bold text-stone-700 shadow-2xs transition active:scale-95"
+            title="Buka Suite Tracking & QR Iklan Multi-Kanal"
+          >
+            <BarChart3 className="h-4 w-4 text-emerald-700" />
+            <span>Tracking &amp; Iklan</span>
+          </Link>
+
           <button
             type="button"
             onClick={() => setIsBatchQrOpen(true)}
@@ -299,6 +323,12 @@ export function ProductsPage() {
           setIsBatchUploadOpen(false)
           fetchProducts()
         }}
+      />
+
+      {/* Master Chatbot / Meja Kasir QR Modal */}
+      <MasterChatbotQrModal
+        open={isMasterQrOpen}
+        onClose={() => setIsMasterQrOpen(false)}
       />
     </div>
   )

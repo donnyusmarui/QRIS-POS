@@ -1,9 +1,9 @@
 import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { transactions, transactionItems, products, inventoryLog } from '../../db/schema';
+import { transactions, transactionItems, products, inventoryLog, marketingCampaigns, marketingTrackingLogs } from '../../db/schema';
 import { corsHeaders, successResponse, errorResponse } from './_shared/response';
 import { verifyMidtransSignature } from './_shared/midtrans';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export default async (req: Request, context: Context) => {
@@ -109,6 +109,50 @@ export default async (req: Request, context: Context) => {
             reason: `Midtrans Settlement #${order_id.slice(0, 8)}`,
             createdBy: transaction.userId,
           });
+        }
+      }
+
+      // C. Marketing Campaign Revenue Attribution
+      if (transaction.notes) {
+        try {
+          let campaignId: string | null = null;
+          const campMatch = transaction.notes.match(/camp_id:([a-zA-Z0-9_-]+)/);
+          const utmMatch = transaction.notes.match(/utm_camp:([a-zA-Z0-9_-]+)/);
+          if (campMatch && campMatch[1]) {
+            campaignId = campMatch[1];
+          } else if (utmMatch && utmMatch[1]) {
+            const [found] = await db
+              .select()
+              .from(marketingCampaigns)
+              .where(eq(marketingCampaigns.utmCampaign, utmMatch[1]));
+            if (found) campaignId = found.id;
+          }
+
+          if (campaignId) {
+            const paidAmount = Number(gross_amount) || transaction.totalAmount;
+            const nowStr = new Date().toISOString();
+            await db
+              .update(marketingCampaigns)
+              .set({
+                revenueAttributed: sql`${marketingCampaigns.revenueAttributed} + ${paidAmount}`,
+                checkoutCount: sql`${marketingCampaigns.checkoutCount} + 1`,
+                updatedAt: nowStr,
+              })
+              .where(eq(marketingCampaigns.id, campaignId));
+
+            await db.insert(marketingTrackingLogs).values({
+              id: 'trk_' + crypto.randomUUID().replace(/-/g, '').slice(0, 12),
+              campaignId,
+              utmSource: 'midtrans_settlement',
+              utmCampaign: utmMatch ? utmMatch[1] : null,
+              eventType: 'paid',
+              metadata: JSON.stringify({ order_id, gross_amount, payment_type }),
+              createdAt: nowStr,
+            });
+            console.log(`[Marketing Attribution]: Revenue Rp ${paidAmount} attributed to campaign ${campaignId}`);
+          }
+        } catch (attrErr) {
+          console.warn('[Marketing Attribution Webhook Warning]:', attrErr);
         }
       }
 

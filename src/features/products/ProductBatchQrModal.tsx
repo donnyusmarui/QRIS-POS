@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import type { Product } from "@/types"
 import QRCode from "qrcode"
-import { X, Printer, QrCode, Sparkles, Loader2 } from "lucide-react"
+import { X, Printer, QrCode, Sparkles, Loader2, RefreshCw } from "lucide-react"
 
 interface ProductBatchQrModalProps {
   open: boolean
@@ -19,43 +19,35 @@ export function ProductBatchQrModal({ open, products, onClose }: ProductBatchQrM
   const [qrItems, setQrItems] = useState<ProductQrItem[]>([])
   const [isGenerating, setIsGenerating] = useState(true)
 
-  useEffect(() => {
-    if (!open || products.length === 0) return
-
-    let isMounted = true
+  const generateAll = useCallback(async () => {
+    if (products.length === 0) return
     setIsGenerating(true)
-
-    const generateAll = async () => {
-      const items: ProductQrItem[] = []
-      for (const p of products) {
-        const url = `${window.location.origin}/?consultProduct=${encodeURIComponent(p.id)}&openChat=true`
-        try {
-          const qrDataUrl = await QRCode.toDataURL(url, {
-            width: 240,
-            margin: 1.5,
-            color: {
-              dark: "#064e3b",
-              light: "#ffffff",
-            },
-          })
-          items.push({ product: p, qrDataUrl, url })
-        } catch (err) {
-          console.error("Gagal generate QR untuk:", p.sku, err)
-        }
-      }
-
-      if (isMounted) {
-        setQrItems(items)
-        setIsGenerating(false)
+    const items: ProductQrItem[] = []
+    for (const p of products) {
+      const url = `${window.location.origin}/?consultProduct=${encodeURIComponent(p.id)}&openChat=true`
+      try {
+        const qrDataUrl = await QRCode.toDataURL(url, {
+          width: 240,
+          margin: 1.5,
+          color: {
+            dark: "#064e3b",
+            light: "#ffffff",
+          },
+        })
+        items.push({ product: p, qrDataUrl, url })
+      } catch (err) {
+        console.error("Gagal generate QR untuk:", p.sku, err)
       }
     }
+    setQrItems(items)
+    setIsGenerating(false)
+  }, [products])
 
-    generateAll()
-
-    return () => {
-      isMounted = false
+  useEffect(() => {
+    if (open) {
+      generateAll()
     }
-  }, [open, products])
+  }, [open, generateAll])
 
   if (!open) return null
 
@@ -86,6 +78,16 @@ export function ProductBatchQrModal({ open, products, onClose }: ProductBatchQrM
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => generateAll()}
+              disabled={isGenerating}
+              className="flex min-h-[40px] h-10 items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 disabled:opacity-50 px-3.5 text-xs font-bold text-stone-700 shadow-xs transition active:scale-95 cursor-pointer"
+              title="Generate ulang seluruh QR Code katalog"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-stone-600 ${isGenerating ? "animate-spin" : ""}`} />
+              <span>Generate Ulang Semua</span>
+            </button>
             <button
               type="button"
               onClick={handlePrint}

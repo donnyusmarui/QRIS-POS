@@ -370,6 +370,40 @@ export const pgChatbotConfig = pgTable("chatbot_config", {
   updatedAt: pgText("updated_at").notNull(),
 })
 
+export const pgMarketingCampaigns = pgTable("marketing_campaigns", {
+  id: pgText("id").primaryKey(),
+  name: pgText("name").notNull(),
+  channel: pgText("channel").notNull(), // tiktok | instagram | whatsapp | google | facebook | linkedin | offline
+  utmSource: pgText("utm_source").notNull(),
+  utmMedium: pgText("utm_medium"),
+  utmCampaign: pgText("utm_campaign"),
+  utmContent: pgText("utm_content"),
+  promoCode: pgText("promo_code"),
+  targetType: pgText("target_type").notNull().default("portal"), // portal | product
+  targetProductId: pgText("target_product_id"),
+  customGreeting: pgText("custom_greeting"),
+  bannerMessage: pgText("banner_message"),
+  scanCount: pgInteger("scan_count").notNull().default(0),
+  chatEngagementCount: pgInteger("chat_engagement_count").notNull().default(0),
+  cartCount: pgInteger("cart_count").notNull().default(0),
+  checkoutCount: pgInteger("checkout_count").notNull().default(0),
+  revenueAttributed: pgDouble("revenue_attributed").notNull().default(0),
+  createdAt: pgText("created_at").notNull(),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
+export const pgMarketingTrackingLogs = pgTable("marketing_tracking_logs", {
+  id: pgText("id").primaryKey(),
+  campaignId: pgText("campaign_id"),
+  utmSource: pgText("utm_source").notNull(),
+  utmMedium: pgText("utm_medium"),
+  utmCampaign: pgText("utm_campaign"),
+  productId: pgText("product_id"),
+  eventType: pgText("event_type").notNull(), // scan | chat_engagement | add_to_cart | checkout | paid
+  metadata: pgText("metadata"),
+  createdAt: pgText("created_at").notNull(),
+})
+
 export const sqliteChatSessions = sqliteTable("chat_sessions", {
   id: sqText("id").primaryKey(),
   status: sqText("status").notNull().default("ai"),
@@ -448,6 +482,40 @@ export const sqliteChatbotConfig = sqliteTable("chatbot_config", {
   updatedAt: sqText("updated_at").notNull(),
 })
 
+export const sqliteMarketingCampaigns = sqliteTable("marketing_campaigns", {
+  id: sqText("id").primaryKey(),
+  name: sqText("name").notNull(),
+  channel: sqText("channel").notNull(),
+  utmSource: sqText("utm_source").notNull(),
+  utmMedium: sqText("utm_medium"),
+  utmCampaign: sqText("utm_campaign"),
+  utmContent: sqText("utm_content"),
+  promoCode: sqText("promo_code"),
+  targetType: sqText("target_type").notNull().default("portal"),
+  targetProductId: sqText("target_product_id"),
+  customGreeting: sqText("custom_greeting"),
+  bannerMessage: sqText("banner_message"),
+  scanCount: sqInteger("scan_count").notNull().default(0),
+  chatEngagementCount: sqInteger("chat_engagement_count").notNull().default(0),
+  cartCount: sqInteger("cart_count").notNull().default(0),
+  checkoutCount: sqInteger("checkout_count").notNull().default(0),
+  revenueAttributed: sqReal("revenue_attributed").notNull().default(0),
+  createdAt: sqText("created_at").notNull(),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
+export const sqliteMarketingTrackingLogs = sqliteTable("marketing_tracking_logs", {
+  id: sqText("id").primaryKey(),
+  campaignId: sqText("campaign_id"),
+  utmSource: sqText("utm_source").notNull(),
+  utmMedium: sqText("utm_medium"),
+  utmCampaign: sqText("utm_campaign"),
+  productId: sqText("product_id"),
+  eventType: sqText("event_type").notNull(),
+  metadata: sqText("metadata"),
+  createdAt: sqText("created_at").notNull(),
+})
+
 // ─── Active Dual-Engine Exports ──────────────────────────
 export const roles: any = isPg ? pgRoles : sqliteRoles
 export const users: any = isPg ? pgUsers : sqliteUsers
@@ -464,6 +532,8 @@ export const chatbotWelcomeMessages: any = isPg ? pgChatbotWelcomeMessages : sql
 export const productEmbeddings: any = isPg ? pgProductEmbeddings : sqliteProductEmbeddings
 export const chatbotSymptomOptions: any = isPg ? pgChatbotSymptomOptions : sqliteChatbotSymptomOptions
 export const chatbotConfig: any = isPg ? pgChatbotConfig : sqliteChatbotConfig
+export const marketingCampaigns: any = isPg ? pgMarketingCampaigns : sqliteMarketingCampaigns
+export const marketingTrackingLogs: any = isPg ? pgMarketingTrackingLogs : sqliteMarketingTrackingLogs
 
 // ─── Type exports ────────────────────────────────────────
 export type Role = typeof pgRoles.$inferSelect
@@ -494,5 +564,9 @@ export type ChatbotSymptomOption = typeof pgChatbotSymptomOptions.$inferSelect
 export type NewChatbotSymptomOption = typeof pgChatbotSymptomOptions.$inferInsert
 export type ChatbotConfig = typeof pgChatbotConfig.$inferSelect
 export type NewChatbotConfig = typeof pgChatbotConfig.$inferInsert
+export type MarketingCampaign = typeof pgMarketingCampaigns.$inferSelect
+export type NewMarketingCampaign = typeof pgMarketingCampaigns.$inferInsert
+export type MarketingTrackingLog = typeof pgMarketingTrackingLogs.$inferSelect
+export type NewMarketingTrackingLog = typeof pgMarketingTrackingLogs.$inferInsert
 
 
