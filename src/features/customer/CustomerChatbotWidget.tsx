@@ -423,6 +423,7 @@ export function CustomerChatbotWidget({
     if (!sid) return
 
     const poll = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return
       try {
         const res = await fetch(`/api/chat-poll?sessionId=${encodeURIComponent(sid)}`)
         if (!res.ok) return

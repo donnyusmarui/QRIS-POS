@@ -694,6 +694,22 @@ export function CustomerPortalPage() {
     fetchProducts() // Refresh product stock
   }
 
+  // Memoize campaign context to prevent wasteful chatbot re-renders
+  const memoizedCampaignContext = useMemo(() => {
+    if (!activeCampaign) return null
+    return {
+      channel: activeCampaign.channel,
+      campaignName: activeCampaign.name,
+      customGreeting: activeCampaign.customGreeting,
+      promoCode: activeCampaign.promoCode,
+    }
+  }, [
+    activeCampaign?.channel,
+    activeCampaign?.name,
+    activeCampaign?.customGreeting,
+    activeCampaign?.promoCode,
+  ])
+
   return (
     <div className="min-h-screen bg-[#FBF9F5] text-[#181512] flex flex-col justify-between selection:bg-[#FF5A2B]/20 selection:text-[#FF5A2B]">
       {/* ── TOP HERO WASH ── */}
@@ -1026,7 +1042,13 @@ export function CustomerPortalPage() {
         vaNumber={activeVaNumber}
         totalAmount={completedTotalAmount}
         onPaymentSuccess={handlePaymentSuccess}
-        onClose={() => setIsPaymentOpen(false)}
+        onClose={() => {
+          setIsPaymentOpen(false)
+          setActiveTransactionId(null)
+          setActiveQrisRefId(null)
+          setActiveQrString(null)
+          setActiveVaNumber(null)
+        }}
         onCancelOrder={() => {
           setActiveTransactionId(null)
           setActiveQrisRefId(null)
@@ -1048,6 +1070,10 @@ export function CustomerPortalPage() {
           setIsReceiptOpen(false)
           setActiveTransactionId(null)
           setActiveQrisRefId(null)
+          setActiveQrString(null)
+          setActiveVaNumber(null)
+          setCompletedOrderItems([])
+          setCompletedTotalAmount(0)
         }}
       />
 
@@ -1058,16 +1084,7 @@ export function CustomerPortalPage() {
         productToConsult={productToConsult}
         customPromptOverride={customPromptOverride}
         onClearConsultProduct={handleClearConsultProduct}
-        campaignContext={
-          activeCampaign
-            ? {
-                channel: activeCampaign.channel,
-                campaignName: activeCampaign.name,
-                customGreeting: activeCampaign.customGreeting,
-                promoCode: activeCampaign.promoCode,
-              }
-            : null
-        }
+        campaignContext={memoizedCampaignContext}
         onFirstEngagement={() => {
           if (activeCampaign) {
             fetch("/.netlify/functions/marketing-track", {

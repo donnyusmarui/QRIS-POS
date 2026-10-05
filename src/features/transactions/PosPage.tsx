@@ -360,7 +360,7 @@ export function PosPage() {
                       {item.quantity}
                     </span>
                     <button
-                      onClick={() => addItem({ id: item.productId, name: item.productName, price: item.price, stock: item.stock } as Product)}
+                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
                       disabled={item.quantity >= item.stock}
                       className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted press-tactile disabled:opacity-40"
                       title="Tambah"

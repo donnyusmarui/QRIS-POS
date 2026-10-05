@@ -281,7 +281,7 @@ export function MarketingCampaignModal({
     setErrorMsg("")
 
     try {
-      const token = localStorage.getItem("accessToken")
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token")
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       }

@@ -77,7 +77,7 @@ export function MarketingAnalyticsPage() {
     setIsLoading(true)
     setErrorMsg("")
     try {
-      const token = localStorage.getItem("accessToken")
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token")
       const headers: Record<string, string> = {}
       if (token) headers["Authorization"] = `Bearer ${token}`
 
@@ -107,7 +107,7 @@ export function MarketingAnalyticsPage() {
   // Fetch product list for dropdowns
   const fetchProducts = useCallback(async () => {
     try {
-      const token = localStorage.getItem("accessToken")
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token")
       const headers: Record<string, string> = {}
       if (token) headers["Authorization"] = `Bearer ${token}`
 
@@ -132,7 +132,7 @@ export function MarketingAnalyticsPage() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Hapus kampanye "${name}"? Data pelacakan akan ikut terhapus.`)) return
     try {
-      const token = localStorage.getItem("accessToken")
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token")
       const headers: Record<string, string> = {}
       if (token) headers["Authorization"] = `Bearer ${token}`
 

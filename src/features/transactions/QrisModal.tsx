@@ -53,10 +53,12 @@ export function QrisModal({
     if (transactionId) {
       setIsPolling(true)
       pollingRef.current = setInterval(async () => {
+        if (typeof document !== "undefined" && document.visibilityState !== "visible") return
         try {
+          const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token") || ""
           const res = await fetch(`/.netlify/functions/transactions-list?page=1&pageSize=5`, {
             headers: {
-              Authorization: `Bearer ${sessionStorage.getItem("access_token") || ""}`,
+              Authorization: `Bearer ${token}`,
             },
           })
           const json = await res.json()
@@ -88,11 +90,12 @@ export function QrisModal({
     if (!transactionId) return
     setIsProcessing(true)
     try {
+      const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token") || ""
       const res = await fetch("/.netlify/functions/transactions-pay", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionStorage.getItem("access_token") || ""}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           transactionId,
