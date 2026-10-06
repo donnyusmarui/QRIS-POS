@@ -1,6 +1,11 @@
-// ─── Engine Vektor & Cosine Similarity untuk RAG Apotek Herbal ───
+// ─── Engine Vektor & Cosine Similarity untuk RAG Apotek Herbal & POS ───
 
-// Kamus kata kunci klinis untuk pemetaan vektor semantik fallback deterministik (128 dimensi)
+// Helper normalisasi SKU / Teks untuk pencarian leksikal presisi
+export function normalizeSkuOrText(str: string): string {
+  return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// Kamus kata kunci klinis & POS umum untuk pembobotan semantik fallback deterministik
 const VOCAB_KEYWORDS = [
   'kolesterol', 'ldl', 'hdl', 'trigliserida', 'plak', 'arteri', 'jantung', 'tengkuk', 'kaku', 'leher',
   'darah kental', 'koagulasi', 'sirkulasi', 'perifer', 'kesemutan', 'kebas', 'baal', 'kaki dingin', 'ujung jari', 'kram',
@@ -29,29 +34,43 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
   return denom === 0 ? 0 : dot / denom;
 }
 
-export function generateDeterministicEmbedding(text: string, dimensions = 128): number[] {
+export function generateDeterministicEmbedding(text: string, dimensions = 768): number[] {
   const lower = (text || '').toLowerCase();
   const vec = new Array(dimensions).fill(0);
 
-  // 1. Beri bobot berbasis vocab klinis
+  // 1. Bobot berbasis vocab klinis & domain
   VOCAB_KEYWORDS.forEach((kw, idx) => {
-    const dimIdx = idx % dimensions;
     if (lower.includes(kw)) {
       const occurrences = (lower.match(new RegExp(kw, 'g')) || []).length;
-      vec[dimIdx] += 1.5 * occurrences;
+      const dimIdx = (idx * 7) % dimensions;
+      vec[dimIdx] += 1.8 * occurrences;
+      vec[(dimIdx + 31) % dimensions] += 0.9 * occurrences;
     }
   });
 
-  // 2. Beri bobot n-gram hash untuk menangkap konteks umum
-  const tokens = lower.split(/[^a-z0-9]+/).filter((t) => t.length > 2);
+  // 2. Bobot n-gram token & character shingles untuk menangkap variasi teks & SKU
+  const tokens = lower.split(/[^a-z0-9]+/).filter((t) => t.length >= 2);
   for (const token of tokens) {
     let hash = 0;
     for (let i = 0; i < token.length; i++) {
       hash = (hash << 5) - hash + token.charCodeAt(i);
       hash |= 0;
     }
-    const idx = Math.abs(hash) % dimensions;
-    vec[idx] += 0.8;
+    const idx1 = Math.abs(hash) % dimensions;
+    const idx2 = Math.abs((hash * 37) ^ (hash >> 3)) % dimensions;
+    vec[idx1] += 1.2;
+    vec[idx2] += 0.7;
+
+    // Subword character trigrams
+    for (let i = 0; i <= token.length - 3; i++) {
+      let triHash = 0;
+      for (let j = 0; j < 3; j++) {
+        triHash = (triHash << 5) - triHash + token.charCodeAt(i + j);
+        triHash |= 0;
+      }
+      const triIdx = Math.abs(triHash) % dimensions;
+      vec[triIdx] += 0.4;
+    }
   }
 
   // 3. Normalisasi L2 unit vector
@@ -63,7 +82,7 @@ export function generateDeterministicEmbedding(text: string, dimensions = 128): 
 
 export async function computeEmbedding(text: string, geminiApiKey?: string): Promise<{ vector: number[]; provider: string }> {
   const clean = (text || '').slice(0, 1500).trim();
-  if (!clean) return { vector: new Array(128).fill(0), provider: 'empty' };
+  if (!clean) return { vector: new Array(768).fill(0), provider: 'empty' };
 
   if (geminiApiKey && geminiApiKey.trim() !== '') {
     try {
@@ -89,5 +108,5 @@ export async function computeEmbedding(text: string, geminiApiKey?: string): Pro
     }
   }
 
-  return { vector: generateDeterministicEmbedding(clean, 128), provider: 'deterministic-128' };
+  return { vector: generateDeterministicEmbedding(clean, 768), provider: 'deterministic-768' };
 }

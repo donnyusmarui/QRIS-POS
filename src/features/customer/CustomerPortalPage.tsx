@@ -385,8 +385,12 @@ function ProductCard({
 // ─── Master Customer Portal Page ───
 export function CustomerPortalPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { storeName, tagline, businessCategory, terminology, renderTemplate } = useStoreProfileStore()
+  const { storeName, tagline, businessCategory, terminology, renderTemplate, hydrateFromServer } = useStoreProfileStore()
   const [searchQuery, setSearchQuery] = useState("")
+
+  useEffect(() => {
+    hydrateFromServer()
+  }, [hydrateFromServer])
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [isPaymentOpen, setIsPaymentOpen] = useState(false)

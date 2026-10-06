@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router"
 import { useAuthStore } from "@/stores/auth-store"
+import { useStoreProfileStore } from "@/lib/store-profile"
 import { hasPermission, apiFetch } from "@/lib/api"
 import {
   LayoutDashboard,
@@ -63,6 +64,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    useStoreProfileStore.getState().hydrateFromServer()
+  }, [])
 
   const filterItems = (items: NavItem[]) =>
     items.filter((item) => !item.permission || hasPermission(user, item.permission))

@@ -31,15 +31,15 @@ export default async (req: Request, context: Context) => {
     }
 
     let indexedCount = 0;
-    let sampleDim = 128;
-    let providerUsed = 'deterministic-128';
+    let sampleDim = 768;
+    let providerUsed = 'deterministic-768';
 
     for (const p of items) {
+      // Chunk semantik bersih (tanpa harga/stok volatil dan tanpa hardcode herbal)
+      // agar vektor embedding tetap valid secara permanen
       const textChunk = `[${p.sku}] ${p.name}
-Kategori: ${p.category || 'Herbal Umum'}
-Harga: Rp ${Number(p.price).toLocaleString('id-ID')} | Stok: ${p.stock}
-Deskripsi & Khasiat: ${p.description || ''}
-Indikasi Herbal: Mengatasi keluhan degeneratif, sirkulasi darah, kolesterol, asam urat, tensi, dan gula darah.`;
+Kategori: ${p.category || 'Umum'}
+Deskripsi & Manfaat: ${p.description || ''}`.trim();
 
       const { vector, provider } = await computeEmbedding(textChunk, geminiKey);
       sampleDim = vector.length;
@@ -57,7 +57,7 @@ Indikasi Herbal: Mengatasi keluhan degeneratif, sirkulasi darah, kolesterol, asa
         metadataJson: JSON.stringify({
           name: p.name,
           sku: p.sku,
-          category: p.category,
+          category: p.category || 'Umum',
           price: p.price,
           stock: p.stock
         }),

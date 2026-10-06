@@ -1,7 +1,8 @@
 import type { Context } from '@netlify/functions';
 import { createDb } from '../../db/index';
-import { products, aiSettings, chatSessions, chatMessages, chatbotConfig } from '../../db/schema';
+import { products, aiSettings, chatSessions, chatMessages, chatbotConfig, storeProfile } from '../../db/schema';
 import { corsHeaders, errorResponse, successResponse } from './_shared/response';
+import { normalizeSkuOrText } from './_shared/vector-engine';
 import { eq, asc } from 'drizzle-orm';
 
 interface ChatRequest {
@@ -80,19 +81,23 @@ function stripThinking(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 }
 
-function parseTags(raw: string, userAllowsRecommendation: boolean = false): { text: string; recommendSkus: string[]; handoff: string | null } {
+function parseTags(raw: string, userAllowsRecommendation: boolean = false, catalog: ProductItem[] = []): { text: string; recommendSkus: string[]; handoff: string | null } {
   let recommendSkus: string[] = [];
   let handoff: string | null = null;
 
   const rec = raw.match(/\[\[RECOMMEND:([^\]]*)\]\]/i);
   if (rec) {
     recommendSkus = rec[1].split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
-  } else if (userAllowsRecommendation) {
-    // Fallback: bila model menuliskan SKU formal (misal HERB-KOL-001) tanpa pembungkus tag
-    const matches = raw.match(/\bHERB-[A-Z]{3}-\d{3}\b/gi);
-    if (matches) {
-      recommendSkus = Array.from(new Set(matches.map((s) => s.toUpperCase())));
+  } else if (userAllowsRecommendation && catalog.length > 0) {
+    // Fallback umum: cocokkan teks balasan dengan SKU apa pun yang benar-benar ada di katalog aktif
+    const normRaw = normalizeSkuOrText(raw);
+    for (const p of catalog) {
+      const normSku = normalizeSkuOrText(p.sku);
+      if (normSku && normRaw.includes(normSku)) {
+        recommendSkus.push(p.sku.toUpperCase());
+      }
     }
+    recommendSkus = Array.from(new Set(recommendSkus));
   }
   const hand = raw.match(/\[\[HANDOFF(?::([^\]]*))?\]\]/i);
   if (hand) handoff = (hand[1] || 'Diminta AI').trim();
@@ -106,13 +111,17 @@ function parseTags(raw: string, userAllowsRecommendation: boolean = false): { te
 
 function findQueriedProduct(query: string, items: ProductItem[]): ProductItem | null {
   if (!query) return null;
-  const upper = query.toUpperCase();
-  // 1. Cek pola SKU seperti HERB-DIA-001
-  const skuMatch = upper.match(/\bHERB-[A-Z]{3}-\d{3}\b/);
-  if (skuMatch) {
-    const found = items.find((p) => p.sku.toUpperCase() === skuMatch[0]);
-    if (found) return found;
+  const normQuery = normalizeSkuOrText(query);
+  if (!normQuery) return null;
+
+  // 1. Cek kecocokan SKU eksak atau parsial (misal: HERB-DIA-001 atau HERBDIA001)
+  for (const p of items) {
+    const normSku = normalizeSkuOrText(p.sku);
+    if (normSku && (normQuery === normSku || normQuery.includes(normSku))) {
+      return p;
+    }
   }
+
   // 2. Cek nama produk langsung
   const lower = query.toLowerCase();
   for (const p of items) {
@@ -123,18 +132,81 @@ function findQueriedProduct(query: string, items: ProductItem[]): ProductItem | 
   return null;
 }
 
-function buildCatalog(items: ProductItem[], queriedProduct?: ProductItem | null): string {
-  // Bila ada produk yang sedang dikonsultasikan langsung, letakkan di urutan paling atas
-  const sorted = queriedProduct
-    ? [queriedProduct, ...items.filter((p) => p.sku.toUpperCase() !== queriedProduct.sku.toUpperCase())]
-    : items;
+// ─── Smart Context Retrieval: Hanya suntikkan Top-3 produk relevan & stok > 0 ───
+function selectTopRelevantProducts(
+  query: string,
+  customerText: string,
+  catalog: ProductItem[],
+  queriedProduct?: ProductItem | null,
+  topK = 3
+): ProductItem[] {
+  // Hanya ambil produk dengan stok aktif > 0
+  const available = catalog.filter((p) => Number(p.stock) > 0);
+  if (available.length === 0) return [];
 
-  // Batasi 8-10 produk paling relevan agar payload token padat, cepat diproses, dan bebas latency bottleneck
-  return sorted
-    .slice(0, 10)
+  const results: ProductItem[] = [];
+
+  // Jika pasien menanyakan produk spesifik yang stoknya ada, prioritaskan di posisi pertama
+  if (queriedProduct && Number(queriedProduct.stock) > 0) {
+    results.push(queriedProduct);
+  }
+
+  const combinedQuery = `${query} ${customerText}`.toLowerCase();
+  const queryTokens = combinedQuery.split(/[^a-z0-9]+/).filter((t) => t.length >= 3);
+  const normCombined = normalizeSkuOrText(combinedQuery);
+
+  const scored = available
+    .filter((p) => !results.some((r) => r.id === p.id))
     .map((p) => {
-      const desc = (p.description || '').replace(/\s+/g, ' ').slice(0, 180);
-      return `- [${p.sku}] ${p.name} | ${p.category} | Rp ${p.price.toLocaleString('id-ID')} | stok ${p.stock} | ${desc}`;
+      let score = 0;
+      const normSku = normalizeSkuOrText(p.sku);
+      const prodName = (p.name || '').toLowerCase();
+      const prodDesc = (p.description || '').toLowerCase();
+      const prodCat = (p.category || '').toLowerCase();
+
+      // Skor SKU
+      if (normSku && normCombined.includes(normSku)) score += 10;
+      // Skor Nama
+      if (combinedQuery.includes(prodName)) score += 6;
+      // Skor Kategori
+      if (prodCat && combinedQuery.includes(prodCat)) score += 3;
+
+      // Skor Token / Gejala
+      for (const token of queryTokens) {
+        if (prodName.includes(token)) score += 2;
+        if (prodDesc.includes(token)) score += 1;
+      }
+
+      return { p, score };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  for (const item of scored) {
+    if (results.length >= topK) break;
+    results.push(item.p);
+  }
+
+  // Jika masih belum mencapai topK dan masih ada stok lain, isi dengan produk tersisa
+  if (results.length < topK) {
+    for (const p of available) {
+      if (results.length >= topK) break;
+      if (!results.some((r) => r.id === p.id)) {
+        results.push(p);
+      }
+    }
+  }
+
+  return results.slice(0, topK);
+}
+
+function buildCatalog(relevantItems: ProductItem[]): string {
+  if (relevantItems.length === 0) {
+    return 'Saat ini tidak ada produk dengan stok tersedia.';
+  }
+  return relevantItems
+    .map((p) => {
+      const desc = (p.description || '').replace(/\s+/g, ' ').slice(0, 160);
+      return `- [${p.sku}] ${p.name} | Kategori: ${p.category || 'Umum'} | Rp ${Number(p.price).toLocaleString('id-ID')} | Stok: ${p.stock} | Khasiat: ${desc}`;
     })
     .join('\n');
 }
@@ -229,14 +301,14 @@ async function callMultiModelAI(config: AiConfig, system: string, turns: Turn[])
 }
 
 // ─── Deteksi serah-terima ke admin ───────────────────────
-const EMERGENCY_RE = /(nyeri dada|sesak( napas| nafas)?|pingsan|lumpuh|bicara pelo|mulut mencong|serangan jantung|muntah darah|darurat|ingin bunuh)/i;
+const EMERGENCY_RE = /(nyeri.*dada|dada.*nyeri|sakit dada|sesak( napas| nafas)?|pingsan|lumpuh|bicara pelo|mulut mencong|serangan jantung|muntah darah|darurat|ingin bunuh)/i;
 const HUMAN_RE = /(\badmin\b|manusia|petugas|operator|\bcs\b|customer service|apoteker|bicara (dengan|sama)|hubungi saya|telepon|komplain|refund|pesanan saya|status pesanan|pembayaran saya|sudah transfer)/i;
 const SPECIAL_RE = /(hamil|menyusui|\bbayi\b|\banak (saya|umur|usia))/i;
 
-function detectHandoff(query: string): { reason: string; emergency: boolean } | null {
+function detectHandoff(query: string, isPharmacy: boolean = true): { reason: string; emergency: boolean } | null {
   if (EMERGENCY_RE.test(query)) return { reason: 'Gejala darurat disebutkan pelanggan', emergency: true };
   if (HUMAN_RE.test(query)) return { reason: 'Pelanggan meminta berbicara dengan admin / urusan pesanan', emergency: false };
-  if (SPECIAL_RE.test(query)) return { reason: 'Kondisi khusus (hamil/menyusui/anak) perlu pertimbangan admin', emergency: false };
+  if (isPharmacy && SPECIAL_RE.test(query)) return { reason: 'Kondisi khusus (hamil/menyusui/anak) perlu pertimbangan admin', emergency: false };
   return null;
 }
 
@@ -355,8 +427,42 @@ function heuristicReply(
   customerText: string,
   items: ProductItem[],
   queriedProduct?: ProductItem | null,
-  pharmacistName: string = 'Apt. Siti Rahma, S.Farm'
+  personaName: string = 'Apt. Siti Rahma, S.Farm',
+  isPharmacy: boolean = true,
+  storeName: string = 'toko kami'
 ): HeuristicResult {
+  // ── MODE UNIVERSAL (NON-HERBAL) OFFLINE / HEURISTIK ──
+  if (!isPharmacy) {
+    if (queriedProduct) {
+      const reply = `Halo! Terima kasih sudah menanyakan tentang *${queriedProduct.name}* (SKU: ${queriedProduct.sku}) di ${storeName} 😊\n\nProduk ini dibanderol dengan harga Rp ${queriedProduct.price.toLocaleString('id-ID')} dan stok saat ini tersedia (${queriedProduct.stock} pcs).\n${queriedProduct.description ? `Keterangan: ${queriedProduct.description}\n\n` : ''}Apakah ada informasi lain yang ingin Anda ketahui atau ingin langsung memesan?`;
+      return {
+        reply,
+        stage: 'recommended',
+        recommended: [queriedProduct]
+      };
+    }
+
+    const recs = selectTopRelevantProducts(query, customerText, items, null, 3);
+    if (recs.length > 0) {
+      const lines = recs
+        .map((p, i) => `**${i + 1}. ${p.name}** — Rp ${p.price.toLocaleString('id-ID')}\n${(p.description || '').replace(/\s+/g, ' ').slice(0, 160)}`)
+        .join('\n\n');
+      const reply = `Halo! Selamat datang di ${storeName} 😊 Ada yang bisa ${personaName} bantu hari ini?\n\nBerikut beberapa produk rekomendasi kami yang mungkin sesuai untuk Anda:\n\n${lines}\n\nSilakan pilih atau tanyakan detail produk yang Anda minati ya!`;
+      return {
+        reply,
+        stage: 'recommended',
+        recommended: recs
+      };
+    }
+
+    const reply = `Halo! Selamat datang di ${storeName} 😊 Saya ${personaName}, siap membantu Anda. Silakan beri tahu produk apa yang sedang Anda cari atau butuhkan!`;
+    return {
+      reply,
+      stage: 'greeting',
+      recommended: []
+    };
+  }
+
   // ── A. PENANGANAN KONSULTASI PRODUK SPESIFIK ──
   if (queriedProduct) {
     const desc = queriedProduct.description || '';
@@ -415,7 +521,7 @@ function heuristicReply(
   if (!cluster) {
     const reply =
       step === 0
-        ? `Halo, saya ${pharmacistName}! Senang bertemu Anda 😊 Bagaimana kabarnya hari ini?\n\nBoleh ceritakan apa yang sedang Anda rasakan atau ingin Anda konsultasikan seputar kesehatan dan herbal? Santai saja, saya siap mendengarkan.`
+        ? `Halo, saya ${personaName}! Senang bertemu Anda 😊 Bagaimana kabarnya hari ini?\n\nBoleh ceritakan apa yang sedang Anda rasakan atau ingin Anda konsultasikan seputar kesehatan dan herbal? Santai saja, saya siap mendengarkan.`
         : 'Terima kasih sudah bercerita 🙏 Supaya saya bisa memahami lebih baik, boleh dijelaskan lebih detail keluhannya — bagian tubuh mana yang terasa tidak nyaman dan sejak kapan?';
     return { reply, stage: step === 0 ? 'greeting' : stage, recommended: [] };
   }
@@ -550,16 +656,7 @@ export default async (req: Request, context: Context) => {
       return successResponse({ sessionId: session.id, status: session.status, reply: null, handoff: true, recommendedProducts: [] });
     }
 
-    // ── 4. Pemicu serah-terima berbasis aturan ──
-    const rule = detectHandoff(query);
-    if (rule) {
-      const reply = rule.emergency ? EMERGENCY_REPLY : HANDOFF_REPLY;
-      await updateSession({ status: 'waiting_admin', handoffReason: rule.reason });
-      await saveMessage('bot', reply);
-      return successResponse({ sessionId: session.id, status: 'waiting_admin', reply, handoff: true, recommendedProducts: [] });
-    }
-
-    // ── 5. Data pendukung: katalog, konfigurasi AI, riwayat ──
+    // ── 4. Data pendukung: profil toko, katalog, konfigurasi AI ──
     let catalog: ProductItem[] = [];
     let aiConfig: AiConfig = {
       provider: 'gemini',
@@ -569,10 +666,13 @@ export default async (req: Request, context: Context) => {
       temperature: 0.4,
       systemPromptOverride: ''
     };
+    let profileData: any = null;
+
     try {
-      const [items, aiRows] = await Promise.all([
+      const [items, aiRows, profileRows] = await Promise.all([
         db.select().from(products).where(eq(products.isActive, true)),
-        db.select().from(aiSettings).where(eq(aiSettings.isActive, true)).limit(1)
+        db.select().from(aiSettings).where(eq(aiSettings.isActive, true)).limit(1),
+        db.select().from(storeProfile).where(eq(storeProfile.id, 'default')).limit(1)
       ]);
       catalog = items
         .map((p: any) => ({
@@ -590,16 +690,33 @@ export default async (req: Request, context: Context) => {
           systemPromptOverride: aiRows[0].systemPromptOverride || ''
         };
       }
+      if (profileRows && profileRows.length > 0) {
+        profileData = profileRows[0];
+      }
     } catch (dbErr) {
       console.warn('Database fetch warning, using fallback knowledge base:', dbErr);
     }
-    if (catalog.length === 0) catalog = FALLBACK_KNOWLEDGE;
 
-    // Guardrail: Tolak pertanyaan non-kesehatan dengan sopan
+    const isPharmacy = !profileData || profileData.businessCategory === 'pharmacy_herbal';
+
+    if (catalog.length === 0) {
+      catalog = isPharmacy ? FALLBACK_KNOWLEDGE : [];
+    }
+
+    // ── 5. Pemicu serah-terima berbasis aturan ──
+    const rule = detectHandoff(query, isPharmacy);
+    if (rule) {
+      const reply = rule.emergency ? EMERGENCY_REPLY : HANDOFF_REPLY;
+      await updateSession({ status: 'waiting_admin', handoffReason: rule.reason });
+      await saveMessage('bot', reply);
+      return successResponse({ sessionId: session.id, status: 'waiting_admin', reply, handoff: true, recommendedProducts: [] });
+    }
+
+    // Guardrail: Tolak pertanyaan non-kesehatan pada mode farmasi/herbal
     const NON_HEALTH_RE = /\b(coding|program|javascript|python|html|css|sql|php|react|nextjs|politik|presiden|pemilu|partai|pilkada|dpr|bengkel|motor|mobil|karburator|oli mesin|ban bocor|resep masakan|resep kue|rendang|nasi goreng|masak ayam|matematika|fisika|tugas sekolah|pr matematika|lelucon|lawak|cerita lucu|tebak-tebakan)\b/i;
     const HEALTH_KEYWORDS_RE = /\b(keluhan|sakit|nyeri|pusing|pegal|darah|tensi|gula|kolesterol|asam urat|urat|sendi|jantung|leher|tengkuk|kebas|kesemutan|herbal|obat|minum|kapsul|resep|sehat|tubuh|badan|gejala|mual|lambung|mag|gerd)\b/i;
 
-    if (NON_HEALTH_RE.test(query) && !HEALTH_KEYWORDS_RE.test(query)) {
+    if (isPharmacy && NON_HEALTH_RE.test(query) && !HEALTH_KEYWORDS_RE.test(query)) {
       const guardrailReply = 'Mohon maaf, saya dirancang khusus untuk mendampingi konsultasi kesehatan herbal dan pola hidup sehat keluarga. Boleh ceritakan apakah ada keluhan fisik atau kondisi kesehatan yang sedang Anda rasakan?';
       await saveMessage('bot', guardrailReply, []);
       return successResponse({
@@ -632,6 +749,14 @@ export default async (req: Request, context: Context) => {
       }
     } catch {}
 
+    // Urutan prioritas persona: chatbot_config (jika diisi admin) → store_profile.ai_persona_title → default
+    let personaTitle = profileData?.aiPersonaTitle || (isPharmacy ? 'Apoteker Pendamping Klinis' : 'Asisten Toko');
+    if (pharmacistTitle && (isPharmacy || pharmacistTitle !== 'Apoteker Pendamping Klinis')) {
+      personaTitle = pharmacistTitle;
+    }
+    const storeName = profileData?.storeName || (isPharmacy ? 'Apotek Herbal Medika' : 'toko kami');
+    const taglinePart = profileData?.tagline ? ` — ${profileData.tagline}` : '';
+
     const history: any[] = await db
       .select()
       .from(chatMessages)
@@ -649,18 +774,28 @@ export default async (req: Request, context: Context) => {
     const queriedProduct = targetProdFromReq || findQueriedProduct(query, catalog) || findQueriedProduct(customerText, catalog);
 
     let turnGuidance = '';
-    if (queriedProduct) {
-      turnGuidance = `\n\nSTATUS KONSULTASI PRODUK SPESIFIK: Pasien sedang mengonsultasikan herbal *${queriedProduct.name}* (SKU: ${queriedProduct.sku}).
+    if (isPharmacy) {
+      if (queriedProduct) {
+        turnGuidance = `\n\nSTATUS KONSULTASI PRODUK SPESIFIK: Pasien sedang mengonsultasikan herbal *${queriedProduct.name}* (SKU: ${queriedProduct.sku}).
 ${productSystemPrompt ? `PANDUAN KHUSUS EDUKASI PRODUK: ${productSystemPrompt}\n` : ''}Berikan penjelasan klinis yang hangat, ringkas, dan langsung to-the-point mengenai khasiat utama, aturan pakai/dosis (${queriedProduct.description || ''}), waktu minum terbaik (sebelum/sesudah makan), dan pantangan terkait, TANPA salam basa-basi panjang atau mengulang-ulang detail produk yang sudah jelas. Di akhir jawaban, sertakan tag [[RECOMMEND:${queriedProduct.sku}]] agar kartu produk otomatis ditampilkan ke pasien.`;
-    } else if (customerTurnsCount <= 1) {
-      turnGuidance = '\n\nSTATUS GILIRAN: Putaran Awal (Turn 1). Berikan empati mendalam + mini-edukasi medis penyebab keluhan ini + ajukan 1 pertanyaan ramah penguat. JANGAN merekomendasikan produk lain di luar keluhan.';
-    } else if (customerTurnsCount === 2) {
-      turnGuidance = '\n\nSTATUS GILIRAN: Putaran Pendalaman (Turn 2). Berikan apresiasi + tips pola hidup praktis + tanyakan riwayat cek lab/tensi/gula. JANGAN merekomendasikan produk dulu.';
-    } else if (customerTurnsCount === 3 && session.stage !== 'consent_asked') {
-      turnGuidance = `\n\nSTATUS GILIRAN: Izin Rekomendasi (Turn 3). Rangkum keluhan pasien dan tanyakan izin kesediaan: "Melihat kondisi Kak ${session.customerName || ''}, ada ramuan herbal alami terstandar BPOM yang cocok. Boleh saya bagikan rekomendasi dan aturan minumnya?" Jangan sertakan tag [[RECOMMEND:...]] sebelum pasien setuju.`;
+      } else if (customerTurnsCount <= 1) {
+        turnGuidance = '\n\nSTATUS GILIRAN: Putaran Awal (Turn 1). Berikan empati mendalam + mini-edukasi medis penyebab keluhan ini + ajukan 1 pertanyaan ramah penguat. JANGAN merekomendasikan produk lain di luar keluhan.';
+      } else if (customerTurnsCount === 2) {
+        turnGuidance = '\n\nSTATUS GILIRAN: Putaran Pendalaman (Turn 2). Berikan apresiasi + tips pola hidup praktis + tanyakan riwayat cek lab/tensi/gula. JANGAN merekomendasikan produk dulu.';
+      } else if (customerTurnsCount === 3 && session.stage !== 'consent_asked') {
+        turnGuidance = `\n\nSTATUS GILIRAN: Izin Rekomendasi (Turn 3). Rangkum keluhan pasien dan tanyakan izin kesediaan: "Melihat kondisi Kak ${session.customerName || ''}, ada ramuan herbal alami terstandar BPOM yang cocok. Boleh saya bagikan rekomendasi dan aturan minumnya?" Jangan sertakan tag [[RECOMMEND:...]] sebelum pasien setuju.`;
+      }
+    } else {
+      // Mode Universal: Alur belanja langsung, ramah, dan solutif
+      if (queriedProduct) {
+        turnGuidance = `\n\nSTATUS KONSULTASI PRODUK SPESIFIK: Pelanggan sedang menanyakan produk *${queriedProduct.name}* (SKU: ${queriedProduct.sku}).
+${productSystemPrompt ? `PANDUAN TAMBAHAN: ${productSystemPrompt}\n` : ''}Jelaskan keunggulan produk, varian, harga, dan ketersediaannya (${queriedProduct.description || ''}) secara ramah dan ringkas. Di akhir jawaban, sertakan tag [[RECOMMEND:${queriedProduct.sku}]] agar kartu produk otomatis ditampilkan.`;
+      } else {
+        turnGuidance = '\n\nSTATUS PANDUAN: Bantu pelanggan menemukan produk yang paling sesuai dari katalog. Jika pelanggan menanyakan rekomendasi atau mencari barang tertentu, langsung jelaskan pilihan terbaik yang relevan dan sertakan tag [[RECOMMEND:SKU1,SKU2]] (maksimal 3 produk).';
+      }
     }
 
-    // ── 6. Jawaban: AI dulu, heuristik sebagai cadangan ──
+    // ── 7. Jawaban: AI dulu, heuristik sebagai cadangan ──
     let replyText = '';
     let recommended: ProductItem[] = [];
     let nextStage: string = session.stage;
@@ -673,20 +808,30 @@ ${productSystemPrompt ? `PANDUAN KHUSUS EDUKASI PRODUK: ${productSystemPrompt}\n
 
     const pharmacistContext = `\n\nIDENTITAS ANDA:\nNama Apoteker: ${pharmacistName}\nJabatan: ${pharmacistTitle}`;
 
-    const system =
-      `${BASE_SYSTEM_PROMPT}` +
-      pharmacistContext +
-      customerContext +
-      turnGuidance +
-      (aiConfig.systemPromptOverride.trim() ? `\n\nINSTRUKSI TAMBAHAN DARI ADMIN:\n${aiConfig.systemPromptOverride.trim()}` : '') +
-      `\n\nKATALOG PRODUK (satu-satunya sumber rekomendasi):\n${buildCatalog(catalog, queriedProduct)}`;
+    const topRelevantProducts = selectTopRelevantProducts(query, customerText, catalog, queriedProduct, 3);
+
+    const universalPrompt = `Anda adalah ${personaTitle || 'Asisten Toko'} di ${storeName || 'toko kami'}${taglinePart}.
+Bicaralah dalam Bahasa Indonesia yang ramah, santun, dan ringkas (maksimal 3-5 kalimat).
+Bantu pelanggan menemukan dan memilih produk dari KATALOG PRODUK TERSEDIA.
+Jangan pernah menyebut produk, harga, atau stok yang tidak ada di katalog.
+Jika ditanya hal di luar produk, layanan, atau belanja di toko ini, tolak dengan sopan lalu arahkan kembali ke produk toko.
+Saat merekomendasikan, akhiri dengan tag [[RECOMMEND:SKU1,SKU2]] (maksimal 3).
+Gunakan [[HANDOFF:alasan]] bila pelanggan minta bicara dengan admin, komplain, atau urusan pesanan/pembayaran.`;
+
+    const system = isPharmacy
+      ? `${BASE_SYSTEM_PROMPT}${pharmacistContext}${customerContext}${turnGuidance}${
+          aiConfig.systemPromptOverride.trim() ? `\n\nINSTRUKSI TAMBAHAN DARI ADMIN:\n${aiConfig.systemPromptOverride.trim()}` : ''
+        }\n\nKATALOG PRODUK TERSEDIA (Hanya pilih dan rekomendasikan dari produk berstok berikut jika pasien menyetujui):\n${buildCatalog(topRelevantProducts)}`
+      : `${universalPrompt}${customerContext}${turnGuidance}${
+          aiConfig.systemPromptOverride.trim() ? `\n\nINSTRUKSI TAMBAHAN DARI ADMIN:\n${aiConfig.systemPromptOverride.trim()}` : ''
+        }\n\nKATALOG PRODUK TERSEDIA:\n${buildCatalog(topRelevantProducts)}`;
 
     const aiRaw = await callMultiModelAI(aiConfig, system, turns);
 
-    const userAllowsRecommendation = session.stage === 'consent_asked' || AFFIRM_RE.test(query) || Boolean(queriedProduct);
+    const userAllowsRecommendation = !isPharmacy || session.stage === 'consent_asked' || AFFIRM_RE.test(query) || Boolean(queriedProduct);
 
     if (aiRaw) {
-      const parsed = parseTags(aiRaw, userAllowsRecommendation);
+      const parsed = parseTags(aiRaw, userAllowsRecommendation, catalog);
       replyText = parsed.text;
       handoffReason = parsed.handoff;
       if (parsed.recommendSkus.length > 0 && !handoffReason) {
@@ -701,7 +846,16 @@ ${productSystemPrompt ? `PANDUAN KHUSUS EDUKASI PRODUK: ${productSystemPrompt}\n
 
     if (!replyText) {
       usedFallback = true;
-      const h = heuristicReply(session.stage, query, customerText, catalog, queriedProduct, pharmacistName);
+      const h = heuristicReply(
+        session.stage,
+        query,
+        customerText,
+        catalog,
+        queriedProduct,
+        isPharmacy ? pharmacistName : personaTitle,
+        isPharmacy,
+        storeName
+      );
       replyText = h.reply;
       recommended = h.recommended;
       nextStage = h.stage;
@@ -736,7 +890,7 @@ ${productSystemPrompt ? `PANDUAN KHUSUS EDUKASI PRODUK: ${productSystemPrompt}\n
     });
   } catch (err: any) {
     console.error('Error in consultation-chat handler, applying graceful fallback:', err);
-    const safeGreeting = 'Halo! Saya Apoteker Pendamping Klinis di Apotek Herbal Medika 😊 Mohon maaf sempat ada kendala koneksi sesaat. Boleh diceritakan keluhan kesehatan atau produk herbal BPOM apa yang sedang ingin Anda konsultasikan? Saya siap mendampingi Anda 🌿';
+    const safeGreeting = 'Halo! Senang bertemu Anda 😊 Mohon maaf sempat ada kendala koneksi sesaat. Ada produk atau hal apa yang bisa saya bantu?';
     return successResponse({
       sessionId: 'chat_recovery',
       status: 'ai',

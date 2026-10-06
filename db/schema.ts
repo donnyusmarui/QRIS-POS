@@ -404,6 +404,16 @@ export const pgMarketingTrackingLogs = pgTable("marketing_tracking_logs", {
   createdAt: pgText("created_at").notNull(),
 })
 
+export const pgStoreProfile = pgTable("store_profile", {
+  id: pgText("id").primaryKey().default("default"),
+  businessCategory: pgText("business_category").notNull().default("retail"),
+  storeName: pgText("store_name").notNull().default("Toko Retail POS"),
+  tagline: pgText("tagline").default(""),
+  aiPersonaTitle: pgText("ai_persona_title").default("Asisten Toko Cerdas"),
+  terminologyJson: pgText("terminology_json"),
+  updatedAt: pgText("updated_at").notNull(),
+})
+
 export const sqliteChatSessions = sqliteTable("chat_sessions", {
   id: sqText("id").primaryKey(),
   status: sqText("status").notNull().default("ai"),
@@ -516,6 +526,16 @@ export const sqliteMarketingTrackingLogs = sqliteTable("marketing_tracking_logs"
   createdAt: sqText("created_at").notNull(),
 })
 
+export const sqliteStoreProfile = sqliteTable("store_profile", {
+  id: sqText("id").primaryKey().default("default"),
+  businessCategory: sqText("business_category").notNull().default("retail"),
+  storeName: sqText("store_name").notNull().default("Toko Retail POS"),
+  tagline: sqText("tagline").default(""),
+  aiPersonaTitle: sqText("ai_persona_title").default("Asisten Toko Cerdas"),
+  terminologyJson: sqText("terminology_json"),
+  updatedAt: sqText("updated_at").notNull(),
+})
+
 // ─── Active Dual-Engine Exports ──────────────────────────
 export const roles: any = isPg ? pgRoles : sqliteRoles
 export const users: any = isPg ? pgUsers : sqliteUsers
@@ -534,6 +554,7 @@ export const chatbotSymptomOptions: any = isPg ? pgChatbotSymptomOptions : sqlit
 export const chatbotConfig: any = isPg ? pgChatbotConfig : sqliteChatbotConfig
 export const marketingCampaigns: any = isPg ? pgMarketingCampaigns : sqliteMarketingCampaigns
 export const marketingTrackingLogs: any = isPg ? pgMarketingTrackingLogs : sqliteMarketingTrackingLogs
+export const storeProfile: any = isPg ? pgStoreProfile : sqliteStoreProfile
 
 // ─── Type exports ────────────────────────────────────────
 export type Role = typeof pgRoles.$inferSelect
@@ -568,5 +589,7 @@ export type MarketingCampaign = typeof pgMarketingCampaigns.$inferSelect
 export type NewMarketingCampaign = typeof pgMarketingCampaigns.$inferInsert
 export type MarketingTrackingLog = typeof pgMarketingTrackingLogs.$inferSelect
 export type NewMarketingTrackingLog = typeof pgMarketingTrackingLogs.$inferInsert
+export type StoreProfile = typeof pgStoreProfile.$inferSelect
+export type NewStoreProfile = typeof pgStoreProfile.$inferInsert
 
 

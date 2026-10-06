@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Store,
   RotateCcw,
@@ -14,6 +14,8 @@ import {
   Sparkles,
   ShoppingBag,
   Bot,
+  Save,
+  Loader2,
 } from "lucide-react"
 import {
   useStoreProfileStore,
@@ -31,9 +33,27 @@ export function StoreProfilePage() {
     updateStoreProfile,
     updateTerminology,
     resetToDefault,
+    hydrateFromServer,
+    saveToServer,
   } = useStoreProfileStore()
 
   const [profileSuccessMsg, setProfileSuccessMsg] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    hydrateFromServer()
+  }, [])
+
+  const handleSaveToServer = async () => {
+    setIsSaving(true)
+    const success = await saveToServer()
+    setIsSaving(false)
+    if (success) {
+      setProfileSuccessMsg("Profil toko dan kamus istilah berhasil disimpan permanen ke server database!")
+    } else {
+      setProfileSuccessMsg("Berhasil disimpan di cache lokal (login diperlukan untuk sinkronisasi server).")
+    }
+  }
 
   const activePreset = CATEGORY_PRESETS[businessCategory] || CATEGORY_PRESETS.retail
 
@@ -53,11 +73,20 @@ export function StoreProfilePage() {
               Profil Toko &amp; Multi-Niche SaaS
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800 flex items-center gap-2 shadow-2xs">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               Industri: {activePreset.label}
             </span>
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={handleSaveToServer}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
+            >
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <span>{isSaving ? "Menyimpan..." : "Simpan ke Server"}</span>
+            </button>
           </div>
         </div>
         <p className="mt-1.5 text-xs sm:text-sm text-stone-600 max-w-3xl leading-relaxed">
@@ -96,9 +125,10 @@ export function StoreProfilePage() {
           </div>
           <button
             type="button"
-            onClick={() => {
+            onClick={async () => {
               resetToDefault()
-              setProfileSuccessMsg("Pengaturan profil toko berhasil dikembalikan ke standar Retail Umum!")
+              await saveToServer()
+              setProfileSuccessMsg("Pengaturan profil toko berhasil dikembalikan ke standar Retail Umum dan disinkronkan ke server!")
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-600 text-xs font-semibold transition cursor-pointer"
           >
@@ -114,9 +144,10 @@ export function StoreProfilePage() {
             return (
               <div
                 key={catKey}
-                onClick={() => {
+                onClick={async () => {
                   applyCategoryPreset(catKey)
-                  setProfileSuccessMsg(`Preset berhasil diubah ke: ${preset.label}! Seluruh modul antarmuka kini sinkron.`)
+                  await saveToServer()
+                  setProfileSuccessMsg(`Preset berhasil diubah ke: ${preset.label} dan tersimpan di server!`)
                 }}
                 className={`press-tactile relative rounded-2xl border p-4 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                   isSelected

@@ -188,6 +188,8 @@ export interface StoreProfileState {
   updateStoreProfile: (profile: Partial<{ storeName: string; tagline: string }>) => void
   updateTerminology: (customTerminology: Partial<StoreTerminology>) => void
   resetToDefault: () => void
+  hydrateFromServer: () => Promise<void>
+  saveToServer: () => Promise<boolean>
 
   // Helper
   renderTemplate: (template: string, channel?: string) => string
@@ -239,6 +241,57 @@ export const useStoreProfileStore = create<StoreProfileState>()(
           businessCategory: "retail",
           terminology: { ...CATEGORY_PRESETS.retail.terminology },
         })
+      },
+
+      hydrateFromServer: async () => {
+        try {
+          const res = await fetch("/api/store-profile-get")
+          if (!res.ok) return
+          const json = await res.json()
+          if (json.success && json.data) {
+            const d = json.data
+            set((state) => ({
+              ...state,
+              businessCategory: (d.businessCategory as BusinessCategory) || state.businessCategory,
+              storeName: d.storeName || state.storeName,
+              tagline: d.tagline !== undefined ? d.tagline : state.tagline,
+              terminology: d.terminology
+                ? { ...state.terminology, ...d.terminology }
+                : state.terminology,
+            }))
+          }
+        } catch (e) {
+          // Abaikan jika offline / network gagal, tetap pakai cache lokal
+        }
+      },
+
+      saveToServer: async () => {
+        const state = get()
+        try {
+          const token = typeof window !== "undefined"
+            ? (localStorage.getItem("access_token") || sessionStorage.getItem("access_token"))
+            : null
+
+          const res = await fetch("/api/store-profile-update", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+              businessCategory: state.businessCategory,
+              storeName: state.storeName,
+              tagline: state.tagline,
+              aiPersonaTitle: state.terminology.aiPersonaTitle,
+              terminology: state.terminology
+            })
+          })
+          if (!res.ok) return false
+          const json = await res.json()
+          return Boolean(json.success)
+        } catch {
+          return false
+        }
       },
 
       renderTemplate: (template, channel = "Media Digital") => {
